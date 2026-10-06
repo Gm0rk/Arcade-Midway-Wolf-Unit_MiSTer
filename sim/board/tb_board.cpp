@@ -16,12 +16,20 @@
 //     -press F:P:M:L  hold port P (in0/in1/in2) bits M (hex) from frame F for
 //                     L frames (like WU_PRESS in ref_trace.lua)
 //     -dsw HEX        DIP switches instead of the set's default
+//     -buslog FILE A B   log CPU writes to the palette, blitter registers,
+//                     sound latch and UMK3 palette ring in frames A-B, and
+//                     the blitter's interrupt and draw-done moments
+//                     (tools/lua/bus_log.lua writes the same writes from MAME)
+//     -nopalring      UMK3 without MAME's palette-ring penalty (compare with
+//                     a MAME run under WU_NO_UMK3_HACK)
 //     -pctrace FILE   write every retired instruction's PC
+//     -pcframes A B   only in frames A-B (each line: frame, PC)
 //
 // Frame numbers count the board's vertical blanks from reset; the first
 // complete picture is frame 1.
 
 #include "Vsim_top.h"
+#include "Vsim_top___024root.h"
 #include "verilated.h"
 #include <cstdio>
 #include <cstdlib>
@@ -119,6 +127,7 @@ static void apply_inputs();
 static std::vector<uint32_t> frame_px, line_px;
 static bool prev_hb = true, prev_vb = true;
 static int frame_no = 0;
+static uint64_t frame_cyc = 0;           // clock of the last frame start (bus log stamps)
 static std::set<int> dump_frames;
 static std::string out_dir, set_name;
 
@@ -137,6 +146,7 @@ static void video_sample()
 	}
 	if (vb && !prev_vb) {
 		frame_no++;
+		frame_cyc = cyc;
 		apply_inputs();          // at the start of vertical blank, as MAME's frame notifier
 		if (dump_frames.count(frame_no)) {
 			char name[512];
@@ -185,11 +195,22 @@ int main(int argc, char **argv)
 	}
 	int exit_at = last;
 	FILE *pct = nullptr;
+	int pc_from = 0, pc_to = 1 << 30;
 	int dsw_override = -1;
+	bool no_pal_ring = false;
+	FILE *bl = nullptr;
+	int bl_from = 0, bl_to = 0;
 	for (int i = 5; i < argc; i++) {
 		if (!strcmp(argv[i], "-exit")) exit_at = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "-dsw")) dsw_override = strtol(argv[++i], nullptr, 16);
+		else if (!strcmp(argv[i], "-nopalring")) no_pal_ring = true;
+		else if (!strcmp(argv[i], "-buslog")) {
+			bl = fopen(argv[++i], "w");
+			bl_from = atoi(argv[++i]);
+			bl_to = atoi(argv[++i]);
+		}
 		else if (!strcmp(argv[i], "-pctrace")) pct = fopen(argv[++i], "w");
+		else if (!strcmp(argv[i], "-pcframes")) { pc_from = atoi(argv[++i]); pc_to = atoi(argv[++i]); }
 		else if (!strcmp(argv[i], "-press")) {
 			Press p; char port[8];
 			sscanf(argv[++i], "%d:%7[^:]:%hx:%d", &p.frame, port, &p.mask, &p.len);
@@ -231,6 +252,7 @@ int main(int argc, char **argv)
 	top->gfx_slots = slots;
 	top->year = atoi(cfg["year"].c_str());
 	top->io_remap = atoi(cfg["io_remap"].c_str());
+	top->pal_ring = (game == 1) && !no_pal_ring;      // UMK3 (all three sets in MAME)
 	top->dcs_version = dcs_ver[game];
 	top->dcs_delay = dcs_dly[game];
 	top->dsw = dsw_override >= 0 ? dsw_override : strtol(cfg["dsw"].c_str(), nullptr, 16);
@@ -257,11 +279,34 @@ int main(int argc, char **argv)
 		top->clk = 1; top->eval();
 		sdram_after_edge();
 		if (ce) video_sample();
-		if (pct && top->dbg_retire) fprintf(pct, "%08x\n", top->dbg_pc);
+		if (pct && top->dbg_retire && frame_no >= pc_from && frame_no <= pc_to)
+			fprintf(pct, "%05d %08x\n", frame_no, top->dbg_pc);
+		static bool irq_d = false, drawn_d = false;
+		if (bl && frame_no >= bl_from && frame_no <= bl_to) {
+			if (top->dbg_dma_irq != irq_d) {
+				int debt = ((int)(top->rootp->sim_top__DOT__board__DOT__cpu__DOT__debt << 8)) >> 8;
+				fprintf(bl, "f%05d %8.2f %08x irq %d debt %d\n", frame_no, (cyc - frame_cyc) / 96.0, top->dbg_pc, top->dbg_dma_irq, debt);
+			}
+			if (top->dbg_dma_drawn && !drawn_d)
+				fprintf(bl, "f%05d %8.2f %08x drawn\n", frame_no, (cyc - frame_cyc) / 96.0, top->dbg_pc);
+		}
+		irq_d = top->dbg_dma_irq; drawn_d = top->dbg_dma_drawn;
+		if (bl && top->dbg_wr && frame_no >= bl_from && frame_no <= bl_to) {
+			unsigned a = top->dbg_waddr, d = top->dbg_wdata;
+			if (a >= 0x188000 && a <= 0x18FFFF)
+				fprintf(bl, "f%05d %8.2f %08x pal %04x %04x\n", frame_no, (cyc - frame_cyc) / 96.0, top->dbg_pc, a - 0x188000, d);
+			else if ((a >> 16) == 0x1A && ((a >> 4) & 0x7FF) == 0)     // + mirror
+				fprintf(bl, "f%05d %8.2f %08x dma %x %04x\n", frame_no, (cyc - frame_cyc) / 96.0, top->dbg_pc, a & 15, d);
+			else if (a >= 0x106A06 && a <= 0x106A09)
+				fprintf(bl, "f%05d %8.2f %08x ring %x %04x\n", frame_no, (cyc - frame_cyc) / 96.0, top->dbg_pc, a - 0x106A06, d);
+			else if ((a >> 1) == (0x168000 >> 1))
+				fprintf(bl, "f%05d %8.2f %08x snd %04x\n", frame_no, (cyc - frame_cyc) / 96.0, top->dbg_pc, d);
+		}
 		top->clk = 0; top->eval();
 		cyc++;
 	}
 	if (pct) fclose(pct);
+	if (bl) fclose(bl);
 	delete top;
 	return 0;
 }
