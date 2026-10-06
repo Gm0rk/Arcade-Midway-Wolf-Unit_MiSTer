@@ -187,6 +187,7 @@ reg   [2:0] game_id;
 reg  [63:0] gfx_slots;
 reg  [11:0] cfg_year;            // the game's year (security PIC date)
 reg         cfg_io_remap;        // WWF: I/O order chosen by the game
+reg         cfg_pal_ring;        // UMK3: MAME's palette-ring penalty
 reg   [1:0] cfg_layout;
 reg   [7:0] cfg_dcs_ver;         // DCS ROM version byte (sound placeholder)
 reg  [19:0] cfg_dcs_dly;         // and the time it took MAME's DCS to send it
@@ -197,12 +198,13 @@ localparam L_MK = 2'd0, L_WWF = 2'd1, L_4P = 2'd2, L_3P = 2'd3;
 always @(posedge clk_sys) begin
 	cfg_year     <= 12'd1994;
 	cfg_io_remap <= 1'b0;
+	cfg_pal_ring <= 1'b0;
 	cfg_layout   <= L_MK;
 	cfg_dcs_ver  <= 8'h01;
 	cfg_dcs_dly  <= 20'd584_560;     // 6.09 ms
 	case (game_id)
 		G_MK3:      ;
-		G_UMK3:     begin cfg_dcs_ver <= 8'h02; cfg_dcs_dly <= 20'd587_480; end
+		G_UMK3:     begin cfg_dcs_ver <= 8'h02; cfg_dcs_dly <= 20'd587_480; cfg_pal_ring <= 1'b1; end
 		G_WWF:      begin cfg_year <= 12'd1995; cfg_io_remap <= 1'b1; cfg_layout <= L_WWF;
 		                  cfg_dcs_dly <= 20'd33_690; end
 		G_OPENICE:  begin cfg_year <= 12'd1995; cfg_layout <= L_4P;
@@ -470,6 +472,7 @@ midway_wunit board
 	.gfx_slots      (gfx_slots),
 	.year           (cfg_year),
 	.io_remap       (cfg_io_remap),
+	.pal_ring       (cfg_pal_ring),
 	.vtiming        (status[15:14]),    // 54.7 / 57 / 60 Hz frames (see midway_wunit.sv)
 
 	.in0            (~in0),
