@@ -19,8 +19,14 @@
 #    0x502000  graphics: the 4 MB slots of MAME's 32 MB "video" region that
 #              hold data, packed in slot order. A slot not filled to 4 MB is
 #              padded with zeros.
+#    (end)     sets with cut-content patches (tools/cut_content.py, UMK3):
+#              the program ROM again, right after the graphics, with the
+#              patches applied by MRA <patch> elements; the OSD option runs
+#              it instead of the first copy
 #  ROM index 1 carries the core's game configuration: the game id, then for
-#  each of the 8 graphics slots its packed index (FF: empty).
+#  each of the 8 graphics slots its packed index (FF: empty), FF, then where
+#  the patched program copy starts (8 KB units, 2 bytes little endian; 0:
+#  none).
 #
 #  md5: the value Main_MiSTer computes while assembling the ROM - every part
 #  in MRA order (each repeat counted), before interleaving. A wrong md5 makes
@@ -48,6 +54,9 @@ import sys
 import zipfile
 import zlib
 from datetime import date
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import cut_content  # noqa: E402
 
 # ----------------------------------------------------------------------------
 # Core configuration
@@ -395,6 +404,9 @@ def place(img, off, data, group, skip):
 #   ("file", name, crc, map)          a whole file (map: interleave lane map)
 #   ("fill", value, count)            <part repeat=count>value</part>
 #   ("interleave", width, [files])    files inside <interleave output=width>
+#   ("patch", offset, bytes)          <patch offset=..>: bytes written over the
+#                                     image (Main_MiSTer applies them after
+#                                     the data and leaves them out of the md5)
 # ----------------------------------------------------------------------------
 
 def lane_map(lane, width):
@@ -486,6 +498,26 @@ def rom_layout(rs, regions_known=True):
     return entries, slotmap
 
 
+def add_cut_content(entries, slotmap, family, files):
+    """Append the patched program copy for a set with cut-content patches.
+    Returns the copy's image offset (0: the set has none). Needs the ROM
+    files: the patches are found in the program itself."""
+    img, _ = assemble(entries, files)
+    if img is None:
+        return 0
+    runs = cut_content.patches(family, img[PROG_BASE:PROG_BASE + PROG_SIZE])
+    if not runs:
+        return 0
+    base = GFX_BASE + sum(1 for x in slotmap if x != 0xFF) * GFX_SLOT
+    assert base % 0x2000 == 0 and len(img) == base
+    prog = [e for e in entries if e[0] == "interleave" and e[1] == 16][0]
+    entries.append(("comment", "program ROM again, patched below: the OSD's cut-content option"))
+    entries.append(prog)
+    for off, data in runs:
+        entries.append(("patch", base + off, data))
+    return base
+
+
 def assemble(entries, files):
     """The ROM image and md5 exactly as Main_MiSTer builds them (or None, md5
     of what could be read, when a file is missing)."""
@@ -504,6 +536,8 @@ def assemble(entries, files):
                 return None, None
             md5.update(data)
             img += data
+        elif e[0] == "patch":
+            img[e[1]:e[1] + len(e[2])] = e[2]
         elif e[0] == "interleave":
             width = e[1] // 8
             parts = []
@@ -525,9 +559,11 @@ def assemble(entries, files):
 # Checks against MAME's regions
 # ----------------------------------------------------------------------------
 
-def check_image(name, img, slotmap, regions):
+def check_image(name, img, slotmap, regions, alt=0, entries=()):
     """Compare the core's view of the image with MAME's regions. Returns a
-    list of error strings (empty when everything matches)."""
+    list of error strings (empty when everything matches). With a patched
+    program copy at `alt`, the copy must be the program with exactly the
+    patches written over it."""
     err = []
 
     prog = regions["maincpu"]
@@ -560,6 +596,16 @@ def check_image(name, img, slotmap, regions):
             if img[a:a + GFX_SLOT] != want:
                 err.append(f"graphics slot {s} differs")
     end = GFX_BASE + sum(1 for x in slotmap if x != 0xFF) * GFX_SLOT
+    if alt:
+        if alt != end:
+            err.append(f"patched program at {alt:#x}, expected {end:#x}")
+        want = bytearray(prog)
+        for e in entries:
+            if e[0] == "patch":
+                want[e[1] - alt:e[1] - alt + len(e[2])] = e[2]
+        if img[alt:alt + PROG_SIZE] != want:
+            err.append("patched program copy differs")
+        end = alt + PROG_SIZE
     if len(img) != end:
         err.append(f"image length {len(img):#x}, expected {end:#x}")
     return err
@@ -627,6 +673,8 @@ def entry_xml(e):
     if e[0] == "file":
         ld = e[1]
         return [f'\t\t<part crc="{ld.crc}" name="{xml_escape(ld.name)}"/>']
+    if e[0] == "patch":
+        return [f'\t\t<patch offset="0x{e[1]:07X}">' + " ".join(f"{b:02X}" for b in e[2]) + "</patch>"]
     if e[0] == "interleave":
         width = e[1] // 8
         out = [f'\t\t<interleave output="{e[1]}">']
@@ -637,7 +685,7 @@ def entry_xml(e):
     raise ValueError(e)
 
 
-def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default, used):
+def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt=0):
     names, pad, players = LAYOUTS[family if family != "umk3" else "mk3"]
     lines = ["<misterromdescription>"]
     lines.append(f"\t<name>{xml_escape(game.title)}</name>")
@@ -662,8 +710,10 @@ def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default
     lines.append(f"0x{PIC_BASE:06X} security PIC (8 KB)")
     lines.append(f"0x{GFX_BASE:06X} graphics ({nslots} x 4 MB slots of MAME's video region: "
                  + " ".join("--" if x == 0xFF else f"{i}" for i, x in enumerate(slotmap)) + ")")
+    if alt:
+        lines.append(f"0x{alt:07X} program ROM again with the cut-content patches (OSD)")
     lines.append("\t</romstruct>")
-    cfg = [GAME_IDS[family]] + slotmap + [0xFF]
+    cfg = [GAME_IDS[family]] + slotmap + [0xFF, (alt >> 13) & 0xFF, alt >> 21]
     lines.append('\t<rom index="1">')
     lines.append("\t\t<part>" + " ".join(f"{b:02X}" for b in cfg) + "</part>")
     lines.append("\t</rom>")
@@ -721,6 +771,7 @@ def main():
             raise SystemExit(f"{g.name}: family {family} has no game id")
         rs = romsets[g.name]
         entries, slotmap = rom_layout(rs)
+        alt = add_cut_content(entries, slotmap, family, md5files)
         md5 = md5_of(entries, md5files)
         if md5 is None:
             print(f"{g.name}: ROM files missing, skipped")
@@ -739,13 +790,13 @@ def main():
                 head = by_name["nbamht"]
             path = os.path.join(args.out, "_alternatives", folder_name(head.title),
                                 file_name(g.title) + ".mra")
-        write_mra(path, g, family, zips, entries, slotmap, md5, dips, dsw_default, used)
+        write_mra(path, g, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt)
 
         status = "written"
         if files:
             img, md5chk = assemble(entries, files)
             regions = build_regions(rs, files)
-            errs = check_image(g.name, img, slotmap, regions)
+            errs = check_image(g.name, img, slotmap, regions, alt, entries)
             if md5chk != md5:
                 errs.append("md5 differs")
             if args.regions:
@@ -756,11 +807,12 @@ def main():
                     for tag, want in dumps.items():
                         if tag in regions and regions[tag] != want:
                             errs.append(f"parser region {tag} differs from MAME's dump")
-                    errs += ["MAME dump: " + e for e in check_image(g.name, img, slotmap, dumps)]
+                    errs += ["MAME dump: " + e for e in check_image(g.name, img, slotmap, dumps, alt, entries)]
             status = "OK" if not errs else "FAIL: " + "; ".join(errs)
             failures += bool(errs)
         print(f"{g.name:12s} {GAME_IDS[family]} slots "
               + "".join("-" if x == 0xFF else str(x) for x in slotmap)
+              + (f" cut {alt:#x}" if alt else "")
               + f" {md5} {status}  {os.path.relpath(path, args.out)}")
     sys.exit(1 if failures else 0)
 
