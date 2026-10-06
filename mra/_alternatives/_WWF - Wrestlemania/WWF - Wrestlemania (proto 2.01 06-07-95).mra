@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>WWF: Wrestlemania (proto 2.01 06/07/95)</name>
-	<mratimestamp>20261005</mratimestamp>
+	<mratimestamp>20261006</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>wwfmaniap</setname>
 	<year>1995</year>
@@ -26,7 +26,7 @@
 0x502000 graphics (4 x 4 MB slots of MAME's video region: 0 1 2 3 -- -- -- --)
 	</romstruct>
 	<rom index="1">
-		<part>02 00 01 02 03 FF FF FF FF FF</part>
+		<part>02 00 01 02 03 FF FF FF FF FF 00 00</part>
 	</rom>
 	<rom index="0" zip="wwfmaniap.zip|wwfmania.zip" md5="57cab4dbac3c6bf76ae4f62cc94d6784" type="merged">
 		<!-- program ROM -->
