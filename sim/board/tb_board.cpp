@@ -22,6 +22,10 @@
 //                     (tools/lua/bus_log.lua writes the same writes from MAME)
 //     -nopalring      UMK3 without MAME's palette-ring penalty (compare with
 //                     a MAME run under WU_NO_UMK3_HACK)
+//     -code F         at frame F, enter the game's hidden menu code (OSD "Open
+//                     EJB Menu" / "Open Secret Midway Menu")
+//     -alt            run the patched program copy (OSD "EJB Character
+//                     Endings"; the set's .cfg must have one)
 //     -pctrace FILE   write every retired instruction's PC
 //     -pcframes A B   only in frames A-B (each line: frame, PC)
 //
@@ -198,12 +202,16 @@ int main(int argc, char **argv)
 	int pc_from = 0, pc_to = 1 << 30;
 	int dsw_override = -1;
 	bool no_pal_ring = false;
+	int code_frame = -1;
+	bool use_alt = false;
 	FILE *bl = nullptr;
 	int bl_from = 0, bl_to = 0;
 	for (int i = 5; i < argc; i++) {
 		if (!strcmp(argv[i], "-exit")) exit_at = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "-dsw")) dsw_override = strtol(argv[++i], nullptr, 16);
 		else if (!strcmp(argv[i], "-nopalring")) no_pal_ring = true;
+		else if (!strcmp(argv[i], "-code")) code_frame = atoi(argv[++i]);
+		else if (!strcmp(argv[i], "-alt")) use_alt = true;
 		else if (!strcmp(argv[i], "-buslog")) {
 			bl = fopen(argv[++i], "w");
 			bl_from = atoi(argv[++i]);
@@ -253,6 +261,11 @@ int main(int argc, char **argv)
 	top->year = atoi(cfg["year"].c_str());
 	top->io_remap = atoi(cfg["io_remap"].c_str());
 	top->pal_ring = (game == 1) && !no_pal_ring;      // UMK3 (all three sets in MAME)
+	unsigned alt = strtoul(cfg["alt"].c_str(), nullptr, 16);
+	if (use_alt && !alt) { fprintf(stderr, "-alt: %s has no patched program copy\n", argv[2]); return 1; }
+	top->prog_base = use_alt ? (alt >> 13) : 0;
+	top->code_sel = (game == 0 || game == 1) ? 1 : (game == 4) ? 2 : 0;
+	top->code_start = 0;
 	top->dcs_version = dcs_ver[game];
 	top->dcs_delay = dcs_dly[game];
 	top->dsw = dsw_override >= 0 ? dsw_override : strtol(cfg["dsw"].c_str(), nullptr, 16);
@@ -273,7 +286,11 @@ int main(int argc, char **argv)
 	}
 	top->reset = 0;
 
+	bool code_done = false;
 	while (frame_no < exit_at) {
+		// the OSD trigger: one clock
+		top->code_start = !code_done && code_frame >= 0 && frame_no >= code_frame;
+		if (top->code_start) code_done = true;
 		ddr_before_edge();
 		bool ce = top->ce_pix;
 		top->clk = 1; top->eval();
