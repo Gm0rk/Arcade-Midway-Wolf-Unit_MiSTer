@@ -6,6 +6,8 @@
 //  The C++ side (tb_board.cpp) models the SDRAM chip on its pins, the DDR3
 //  bridge on its Avalon port, and captures the video. ROM downloads are
 //  skipped: the C++ side writes the ROM image straight into its SDRAM model.
+//  The secret menu code player (rtl/wunit_macro.sv) sits on IN0 as in the
+//  top level, started by the C++ side instead of the OSD.
 //
 //  Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
 //============================================================================
@@ -21,6 +23,9 @@ module sim_top
 	input      [11:0] year,
 	input             io_remap,
 	input             pal_ring,
+	input      [24:13] prog_base,     // patched program copy (0: the original)
+	input             code_start,    // one clock: enter the hidden menu code
+	input       [1:0] code_sel,      // 1 EJB menu, 2 Secret Midway Menu
 	input       [7:0] dcs_version,
 	input      [19:0] dcs_delay,
 	input      [15:0] in0,
@@ -86,6 +91,23 @@ wire        snd_wr, snd_rd, snd_reset;
 wire  [7:0] snd_wdata, snd_rdata;
 wire [15:0] snd_ctrl;
 
+// the code player, frames as the top level counts them (vertical blank
+// starts; the board never pauses here)
+wire [15:0] macro_press;
+reg         vb_d;
+always @(posedge clk) vb_d <= vid_vb;
+
+wunit_macro macro
+(
+	.clk    (clk),
+	.reset  (reset),
+	.start  (code_start),
+	.code   (code_sel),
+	.frame  (vid_vb & ~vb_d),
+	.press  (macro_press),
+	.busy   ()
+);
+
 midway_wunit board
 (
 	.clk            (clk),
@@ -96,9 +118,10 @@ midway_wunit board
 	.year           (year),
 	.io_remap       (io_remap),
 	.pal_ring       (pal_ring),
+	.prog_base      (prog_base),
 	.vtiming        (2'd0),
 
-	.in0            (in0),
+	.in0            (in0 & ~macro_press),   // active low
 	.in1            (in1),
 	.dsw            (dsw),
 	.in2            (in2),
