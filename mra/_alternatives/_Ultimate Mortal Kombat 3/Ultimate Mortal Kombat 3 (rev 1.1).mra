@@ -1,0 +1,79 @@
+<misterromdescription>
+	<name>Ultimate Mortal Kombat 3 (rev 1.1)</name>
+	<mratimestamp>20261005</mratimestamp>
+	<mameversion>0289</mameversion>
+	<setname>umk3r11</setname>
+	<year>1994</year>
+	<manufacturer>Midway</manufacturer>
+	<category>Fighter / Versus</category>
+	<rbf>Arcade-Midway-Wolf-Unit</rbf>
+	<remark>2 players</remark>
+	<switches default="7D,FD">
+		<dip bits="0" name="Test Switch" ids="Off,On" values="1,0"/>
+		<dip bits="1" name="Counters" ids="One,Two" values="1,0"/>
+		<dip bits="2,6" name="Coinage" ids="USA-1,USA-2,USA-3,USA-4,USA-ECA,USA-Free Play,German-1,German-2,German-3,German-4,German-5,German-ECA,German-Free Play,French-1,French-2,French-3,French-4,French-ECA,French-Free Play" values="31,15,23,7,27,3,29,13,21,5,25,9,1,30,14,22,6,26,2"/>
+		<dip bits="7" name="Coinage Source" ids="Dipswitch,CMOS" values="1,0"/>
+		<dip bits="9" name="Powerup Test" ids="Off,On"/>
+		<dip bits="10" name="Bill Validator" ids="Off,On" values="1,0"/>
+		<dip bits="12" name="Attract Sound" ids="Off,On"/>
+		<dip bits="14" name="Blood" ids="Off,On"/>
+		<dip bits="15" name="Violence" ids="Off,On"/>
+	</switches>
+	<buttons names="High Punch,Block,High Kick,Low Punch,Low Kick,Run,Start,Coin,Test,Pause" default="Y,R,X,B,A,L,Start,Select,-,-"/>
+	<romstruct>
+0x000000 program ROM (1 MB, 16-bit little endian)
+0x100000 DCS sound ROMs (4 x 1 MB, MAME region bytes 0, 2, 4, ...)
+0x500000 security PIC (8 KB)
+0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 -- 5 -- --)
+	</romstruct>
+	<rom index="1">
+		<part>01 00 01 02 03 FF 04 FF FF FF</part>
+	</rom>
+	<rom index="0" zip="umk3r11.zip|umk3.zip" md5="a2c2dbd32795f355c944d56b06086e48" type="merged">
+		<!-- program ROM -->
+		<interleave output="16">
+			<part crc="8bb27659" name="l1.1_mortal_kombat_3_u54_ultimate.u54" map="01"/>
+			<part crc="ea731783" name="l1.1_mortal_kombat_3_u63_ultimate.u63" map="10"/>
+		</interleave>
+		<!-- DCS sound ROMs -->
+		<part crc="3838cfe5" name="l2.0_mortal_kombat_3_u2_ultimate.u2"/>
+		<part crc="856fe411" name="l1_mortal_kombat_3_u3_music_spch.u3"/>
+		<part crc="428a406f" name="l1_mortal_kombat_3_u4_music_spch.u4"/>
+		<part crc="3b98a09f" name="l1_mortal_kombat_3_u5_music_spch.u5"/>
+		<!-- security PIC -->
+		<part crc="4f425218" name="463_mk3_ultimate.u64"/>
+		<part repeat="0xFF7">00</part>
+		<!-- graphics -->
+		<interleave output="32">
+			<part crc="79b94667" name="l1_mortal_kombat_3_u133_game_rom.u133" map="0001"/>
+			<part crc="13e95228" name="l1_mortal_kombat_3_u132_game_rom.u132" map="0010"/>
+			<part crc="41001e30" name="l1_mortal_kombat_3_u131_game_rom.u131" map="0100"/>
+			<part crc="49379dd7" name="l1_mortal_kombat_3_u130_game_rom.u130" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="a8b41803" name="l1_mortal_kombat_3_u129_game_rom.u129" map="0001"/>
+			<part crc="b410d72f" name="l1_mortal_kombat_3_u128_game_rom.u128" map="0010"/>
+			<part crc="bd985be7" name="l1_mortal_kombat_3_u127_game_rom.u127" map="0100"/>
+			<part crc="e7c32cf4" name="l1_mortal_kombat_3_u126_game_rom.u126" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="9a52227e" name="l1_mortal_kombat_3_u125_game_rom.u125" map="0001"/>
+			<part crc="5c750ebc" name="l1_mortal_kombat_3_u124_game_rom.u124" map="0010"/>
+			<part crc="f0ab88a8" name="l1_mortal_kombat_3_u123_game_rom.u123" map="0100"/>
+			<part crc="9b87cdac" name="l1_mortal_kombat_3_u122_game_rom.u122" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="cc4b95db" name="mortal_kombat_iii_ultimate_u121_video_image.u121" map="0001"/>
+			<part crc="1c8144cd" name="mortal_kombat_iii_ultimate_u120_video_image.u120" map="0010"/>
+			<part crc="5f10c543" name="mortal_kombat_iii_ultimate_u119_video_image.u119" map="0100"/>
+			<part crc="de0c4488" name="mortal_kombat_iii_ultimate_u118_video_image.u118" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="99d74a1e" name="mortal_kombat_iii_ultimate_u113_video_image.u113" map="0001"/>
+			<part crc="b5a46488" name="mortal_kombat_iii_ultimate_u112_video_image.u112" map="0010"/>
+			<part crc="a87523c8" name="mortal_kombat_iii_ultimate_u111_video_image.u111" map="0100"/>
+			<part crc="0038f205" name="mortal_kombat_iii_ultimate_u110_video_image.u110" map="1000"/>
+		</interleave>
+	</rom>
+	<nvram index="2" size="49152"/>
+</misterromdescription>
