@@ -48,3 +48,8 @@ When a picture goes wrong in the simulator but not in MAME:
   (`-debug -debugger none`, `trace FILE,maincpu` from a Lua frame notifier)
 - `-nopalring` leaves out the UMK3 palette-ring penalty, to compare with a
   MAME run under `WU_NO_UMK3_HACK`
+
+The OSD's hidden-menu items: `-code F` enters the game's hidden menu code
+from frame F (EJB Menu, Secret Midway Menu), `-alt` runs the patched
+program copy (EJB Character Endings; `wunit_roms.py` adds the copy to the
+image and its place to the .cfg).
