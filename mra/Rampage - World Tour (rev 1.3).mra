@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Rampage: World Tour (rev 1.3)</name>
-	<mratimestamp>20261005</mratimestamp>
+	<mratimestamp>20261006</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>rmpgwt</setname>
 	<year>1997</year>
@@ -24,7 +24,7 @@
 0x502000 graphics (4 x 4 MB slots of MAME's video region: 0 1 2 3 -- -- -- --)
 	</romstruct>
 	<rom index="1">
-		<part>05 00 01 02 03 FF FF FF FF FF</part>
+		<part>05 00 01 02 03 FF FF FF FF FF 00 00</part>
 	</rom>
 	<rom index="0" zip="rmpgwt.zip" md5="dd6f906ce6a5e258c2a00166fa10ab79">
 		<!-- program ROM -->
