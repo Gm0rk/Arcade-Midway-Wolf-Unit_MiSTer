@@ -25,6 +25,7 @@
 //    - the I/O block can be reordered (WWF WrestleMania picks one of five
 //      maps by writing word 0; MAME wwfmania_io_0_w)
 //    - the palette is 32K colours and the pens are 15 bits
+//    - UMK3: MAME's palette-ring penalty (see "Machine cycles")
 //
 //  Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
 //============================================================================
@@ -39,6 +40,8 @@ module midway_wunit
 	input      [63:0] gfx_slots,     // byte n: packed index of 4 MB graphics slot n, FF empty
 	input      [11:0] year,          // for the security PIC's date
 	input             io_remap,      // WWF: a write to I/O word 0 picks the I/O order
+	input             pal_ring,      // UMK3: 100 machine cycles per write to the palette
+	                                 // ring pointers (MAME umk3_palette_hack_w)
 	input       [1:0] vtiming,       // MiSTer option: 0 native frame (54.7 Hz), 1 277 lines
 	                                 // (57.1 Hz), 2 263 lines (60.1 Hz); see "Video timing"
 
@@ -157,6 +160,19 @@ always @(posedge clk)
 reg  [16:0] cyc_acc;
 reg         ce_cyc;
 reg  [16:0] cyc_step, cyc_thr;
+
+// UMK3 palette ring (MAME umk3_palette_hack_w): the game queues palette
+// changes in a 17-entry ring that the display interrupt empties. The real
+// chip's instruction cache makes the CPU slow enough that the ring rarely
+// wraps; MAME's 34010 timing (which this core charges) assumes a full cache,
+// so the ring wraps often and palettes are lost (wrong colours). MAME charges
+// 100 machine cycles for every write to the ring's pointers (words
+// 0x0106A06-0x0106A09, bit address 0x0106A060-0x0106A09F); here the next 100
+// machine-cycle ticks are withheld from the CPU, which delays it exactly as
+// 100 more cycles of debt would.
+localparam [9:0] RING_PENALTY = 10'd100;
+reg         pen_add;             // one clock: a ring pointer write was taken
+reg   [9:0] pen_left;            // ticks still to withhold
 always @(posedge clk) begin
 	case (vt)
 		2'd1:    cyc_step <= 17'd6521;   // 57 Hz
@@ -177,17 +193,27 @@ end
 
 always @(posedge clk) begin
 	ce_cyc <= 1'b0;
-	if (reset)
-		cyc_acc <= 17'd0;
-	else if (ph[0]) begin
-		// steps of 6.25 MHz out of 48 MHz: acc + step >= 48000 is
-		// acc >= 48000 - step, and acc + step - 48000 is acc - (48000 - step)
-		if (cyc_acc >= cyc_thr) begin
-			cyc_acc <= cyc_acc - cyc_thr;
-			ce_cyc  <= ~pause;
+	if (reset) begin
+		cyc_acc  <= 17'd0;
+		pen_left <= 10'd0;
+	end
+	else begin
+		// a tick withheld for the ring penalty (never during pause)
+		if (ph[0] && (cyc_acc >= cyc_thr) && !pause && (pen_left != 10'd0))
+			pen_left <= pen_left - 10'd1 + (pen_add ? RING_PENALTY : 10'd0);
+		else if (pen_add)
+			pen_left <= pen_left + RING_PENALTY;
+
+		if (ph[0]) begin
+			// steps of 6.25 MHz out of 48 MHz: acc + step >= 48000 is
+			// acc >= 48000 - step, and acc + step - 48000 is acc - (48000 - step)
+			if (cyc_acc >= cyc_thr) begin
+				cyc_acc <= cyc_acc - cyc_thr;
+				ce_cyc  <= ~pause && (pen_left == 10'd0);
+			end
+			else
+				cyc_acc <= cyc_acc + cyc_step;
 		end
-		else
-			cyc_acc <= cyc_acc + cyc_step;
 	end
 end
 
@@ -306,6 +332,7 @@ wire [27:0] wa = b_addr;
 
 wire sel_vram  = (wa[27:18] == 10'd0);
 wire sel_ram   = (wa[27:18] == 10'h004);
+wire sel_ring  = (wa[27:0] >= 28'h0106A06) && (wa[27:0] <= 28'h0106A09);   // UMK3 ring pointers
 wire sel_cmos  = (wa[27:15] == 13'h0028) && (wa[14:13] != 2'b11);
 wire sel_cmosen= (wa[27:15] == 13'h0029);
 wire sel_sec   = (wa[27:1]  == 27'h00B_0000);              // words 0x160000-0x160001
@@ -791,6 +818,19 @@ localparam S_GFXSD   = 4'd14;    // graphics read-back: SDRAM request
 
 reg   [3:0] bstate;
 reg         vram_sent;
+reg         vram_wait;           // the clock after a VRAM read request
+reg         vram_done;           // registered vcpu_req == vcpu_ack
+reg  [15:0] vram_rd;             // registered read word, this bank's bytes
+
+// VRAM reads finish from registers: the controller's ack and data are
+// copied here first (compared directly, its ack drove mem_rdata's enable
+// from inside wunit_vram, a long path at 96 MHz). vram_done of the clock
+// right after the request still shows the previous handshake, so S_VRAMRD
+// skips that clock (vram_wait).
+always @(posedge clk) begin
+	vram_done <= (vcpu_req == vcpu_ack);
+	vram_rd   <= videobank ? {vcpu_rdata[23:16], vcpu_rdata[7:0]} : {vcpu_rdata[31:24], vcpu_rdata[15:8]};
+end
 reg  [24:0] gfx_b;               // region byte of a read-back
 reg  [25:0] gfx_sd;              // {empty, SDRAM byte} of it
 
@@ -817,6 +857,7 @@ always @(posedge clk) begin
 	pic_wr     <= 1'b0;
 	pic_rd     <= 1'b0;
 	pic_rst    <= 1'b0;
+	pen_add    <= 1'b0;
 
 	if (reset) begin
 		mem_ack     <= 1'b0;
@@ -868,8 +909,10 @@ always @(posedge clk) begin
 						dma_reg_wr <= 1'b1;
 						bstate     <= S_DMAWAIT;
 					end
-					else if (sel_ram)
-						bstate <= S_RAMWR;
+					else if (sel_ram) begin
+						pen_add <= pal_ring && sel_ring;
+						bstate  <= S_RAMWR;
+					end
 					else begin
 						mem_ack <= 1'b1;
 						if (sel_cmos && cmos_en) begin
@@ -1083,12 +1126,15 @@ always @(posedge clk) begin
 						vcpu_half  <= wa[0];
 						vcpu_req   <= ~vcpu_req;
 						vram_sent  <= 1'b1;
+						vram_wait  <= 1'b1;
 					end
 				end
-				else if (vcpu_req == vcpu_ack) begin
+				else if (vram_wait)
+					vram_wait <= 1'b0;
+				else if (vram_done) begin
 					vram_sent <= 1'b0;
 					mem_ack   <= 1'b1;
-					mem_rdata <= videobank ? {vcpu_rdata[23:16], vcpu_rdata[7:0]} : {vcpu_rdata[31:24], vcpu_rdata[15:8]};
+					mem_rdata <= vram_rd;
 					bstate    <= S_IDLE;
 				end
 			end
