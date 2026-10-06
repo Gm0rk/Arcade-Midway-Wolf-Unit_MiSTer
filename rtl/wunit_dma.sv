@@ -21,7 +21,10 @@
 //    - clipping on all four edges
 //    - zero / non-zero pixels each skipped, copied or drawn in the colour
 //      register (command bits 0-3)
-//    - completion 41 ns per pixel of the unclipped (scaled) image
+//    - completion 41 ns per pixel of the unclipped (scaled) image, counted
+//      from the command write as MAME's timer is (the setup clocks before
+//      the timer can be loaded, and any wait for the previous blit to finish
+//      drawing, come off it)
 //
 //  One engine runs every mode. MAME has separate scaled and unscaled
 //  routines, but with steps of 1.0 the scaled formulas give exactly the
@@ -39,6 +42,12 @@
 //  drawn pixel is written into the row RAM on its own (four 16-bit lanes)
 //  with a valid bit per entry, so when a scaled row runs past 1024 columns
 //  and wraps over itself the later pixel wins, as in MAME.
+//
+//  Timing (clk_sys 96 MHz): at most one multiply or one wide sum per clock.
+//  Products the row loop needs (row advance, start skip, compressed rows
+//  skipped by Y scaling) are registered in one state and added in the next;
+//  all source reads (pixels and skip bytes) go through one pointer, o, so
+//  the window's "line present" check has no multiplexer in front of it.
 //
 //  Known difference: MAME stores pixels at x 512-1023 into the next row of
 //  its frame store (its row pointer has no column wrap); here they are
@@ -132,6 +141,8 @@ reg         fill_bank;                  // bank being filled
 reg         flush_bank;                 // bank the VRAM controller is reading
 reg [511:0] valid;                      // entries drawn in the fill bank
 reg [511:0] flush_valid;                // the same for the bank being flushed
+reg         vw_en;                      // set valid[vw_col] next clock (the
+reg   [8:0] vw_col;                     // 512-way decode gets a clock of its own)
 reg  [63:0] rb_q;
 reg   [3:0] rb_v;
 
@@ -212,7 +223,7 @@ localparam B_PRE2    = 5'd8;
 localparam B_CLIPY   = 5'd9;
 localparam B_SSDIV   = 5'd10;    // start skip / x step
 localparam B_SS2     = 5'd11;
-localparam B_SS3     = 5'd12;
+localparam B_SS3     = 5'd12;    // start skip: add the source bits
 localparam B_ENDSK   = 5'd13;
 localparam B_PIX     = 5'd14;
 localparam B_PDRAIN  = 5'd15;
@@ -228,6 +239,9 @@ localparam B_CNTW    = 5'd24;    // pixel count: wait for the divider
 localparam B_CNTW2   = 5'd25;
 localparam B_TIME    = 5'd26;
 localparam B_PREW    = 5'd27;    // pre-skip division running
+localparam B_ADV3    = 5'd28;    // next row: add the product
+localparam B_SKROW3  = 5'd29;    // scaled skip rows: bytes of the row
+localparam B_SKROW4  = 5'd30;    //                   past them
 
 localparam OP_SKIP = 2'd0, OP_COPY = 2'd1, OP_COLOR = 2'd2;
 
@@ -256,6 +270,8 @@ reg  [12:0] wbits;                      // width * bpp
 reg  [17:0] cnt_x;
 reg  [35:0] pixels;
 reg  [31:0] timer;                      // clk cycles until completion may be signalled
+reg  [15:0] since;                      // clk cycles since the start was first written
+reg         start_wr_q;
 
 // row state
 reg  [19:0] iy;                         // 8.8 row position
@@ -267,8 +283,10 @@ reg  signed [27:0] wfp;                 // 8.8 row end
 reg  [14:0] pre_fp, post_fp;            // this row's skips, 8.8
 reg  [15:0] tx;
 reg   [8:0] ty;                         // source rows per y step (up to 256)
-reg  [31:0] o2;                         // scaled skip rows: pointer
-reg   [8:0] skrows;
+reg   [8:0] skrows;                     // compressed rows still to step over
+reg   [9:0] rowpix;                     // pixels stored in a compressed row
+reg  [13:0] bmul;                       // bpp x pixels (one product per clock)
+reg  [21:0] mprod;                      // source rows x row bits
 
 wire [15:0] skp_fp = {1'b0, pre_fp} + {1'b0, post_fp};       // this row's skips, 8.8
 wire [27:0] ss_fp  = {4'd0, startskip, 8'd0};                // start skip, 8.8
@@ -304,9 +322,9 @@ reg         v0, v1;
 reg         fetching;
 reg  [21:0] fetch_tag;
 
-// whose pointer the window follows: the pixel loop's o, the skip-byte
-// readers' offset / o2
-wire [31:0] sp      = (bstate == B_SKROW) ? o2 : (bstate == B_SKIPRD) ? offset : o;
+// the window follows o: the pixel loop's pointer, and the skip-byte readers'
+// (B_SKIPRD, B_SKROW) too
+wire [31:0] sp      = o;
 wire [21:0] sp_line = sp[27:6];
 wire  [6:0] sp_end  = {1'b0, sp[5:0]} + ((bstate == B_PIX) ? {3'd0, bpp} : 7'd8);
 wire        sp_two  = sp_end > 7'd64;           // the bits run into the next line
@@ -376,6 +394,7 @@ wire signed [27:0] wend = $signed({{18{1'b0}}, width}) - $signed({12'd0, endskip
 integer i;
 always @(posedge clk) begin
 	rb_we <= 1'b0;
+	vw_en <= 1'b0;
 	div_go <= 1'b0;
 
 	if (reset) begin
@@ -398,6 +417,14 @@ always @(posedge clk) begin
 		else if (timer != 32'd0)
 			timer <= timer - 32'd1;
 
+		// time since the start command, counted like the timer: from its
+		// first clock on the bus (a start held by reg_wr_wait counts too)
+		start_wr_q <= start_wr;
+		if (start_wr && !start_wr_q)
+			since <= 16'd0;
+		else if (since < 16'hFFF0)
+			since <= since + (fast ? 16'd2 : 16'd1);
+
 		// ---- flush handshake ----
 		if (flush_busy && (blt_req == blt_ack))
 			flush_busy <= 1'b0;
@@ -414,13 +441,19 @@ always @(posedge clk) begin
 			p1_val <= (nzop == OP_COLOR) ? color : (pal | {8'd0, p0_pix});
 		end
 
+		// ---- pixel pipeline stage 3: the entry's valid bit, set with its RAM
+		// write; B_PDRAIN / B_ROWEND keep B_FLUSH a clock behind the last ----
+		if (vw_en)
+			valid[vw_col] <= 1'b1;
+
 		// ---- pixel pipeline stage 2: into the row buffer ----
 		// columns 512-1023 are outside the frame store's row
 		if (p1_v && p1_wr && !p1_sx[9]) begin
 			rb_we    <= 1'b1;
 			rb_wcol  <= {fill_bank, p1_sx[8:0]};
 			rb_wdata <= p1_val;
-			valid[p1_sx[8:0]] <= 1'b1;
+			vw_en    <= 1'b1;
+			vw_col   <= p1_sx[8:0];
 			row_any  <= 1'b1;
 			if (!row_any || p1_sx[8:2] < row_lo) row_lo <= p1_sx[8:2];
 			if (!row_any || p1_sx[8:2] > row_hi) row_hi <= p1_sx[8:2];
@@ -477,7 +510,6 @@ always @(posedge clk) begin
 				need_src <= !(cmd[3] && cmd[2]);
 				no_draw  <= (cmd[3:0] == 4'd0) || (offset >= 32'h1000_0000);
 				kx0      <= bpp * xstep[15:8];
-				kx1      <= bpp * xstep[15:8] + {8'd0, bpp};
 				wbits    <= width * bpp;
 				// pixel count, first factor
 				div_a    <= {2'd0, width, 8'd0};
@@ -486,7 +518,10 @@ always @(posedge clk) begin
 				bstate   <= B_CNTX;
 			end
 
-			B_CNTX: bstate <= B_CNTW;            // the divider starts
+			B_CNTX: begin                        // the divider starts
+				kx1    <= kx0 + {8'd0, bpp};
+				bstate <= B_CNTW;
+			end
 
 			B_CNTW: if (!div_busy && !div_go) begin
 				cnt_x  <= div_q[17:0];
@@ -516,6 +551,9 @@ always @(posedge clk) begin
 			end
 
 			B_TIME: begin
+				// the clocks already gone since the command write come off
+				// (MAME's timer starts at the write)
+				timer     <= (timer > {16'd0, since}) ? timer - {16'd0, since} : 32'd0;
 				iy        <= 20'd0;
 				sy        <= ypos;
 				bstate    <= no_draw ? B_WAIT : B_ROW;
@@ -525,12 +563,12 @@ always @(posedge clk) begin
 			B_ROW: begin
 				row_any   <= 1'b0;
 				valid     <= 512'd0;
+				o         <= offset;             // the skip byte or the first pixel
 				if (iy >= {2'd0, height, 8'd0})
 					bstate <= B_DRAIN;
 				else if (skip)
 					bstate <= B_SKIPRD;
 				else begin
-					o       <= offset;
 					sx      <= xpos;
 					ix      <= 28'sd0;
 					wfp     <= {10'd0, width, 8'd0};
@@ -542,7 +580,7 @@ always @(posedge clk) begin
 
 			B_SKIPRD: if (have) begin
 				// the skip byte: pixels before (low nibble) and after (high)
-				o       <= offset + 32'd8;
+				o       <= o + 32'd8;
 				pre_fp  <= {3'd0, sp_bits[3:0], 8'd0} << preskip;
 				post_fp <= {3'd0, sp_bits[7:4], 8'd0} << postskip;
 				sx      <= xpos;
@@ -606,7 +644,12 @@ always @(posedge clk) begin
 
 			B_SS2: begin
 				ix     <= ix + $signed({12'd0, tx});
-				o      <= o + bpp * tx[15:8];
+				bmul   <= bpp * tx[15:8];
+				bstate <= B_SS3;
+			end
+
+			B_SS3: begin
+				o      <= o + {18'd0, bmul};
 				bstate <= B_ENDSK;
 			end
 
@@ -659,46 +702,64 @@ always @(posedge clk) begin
 				// rows of source this y step moves over
 				ty <= 9'((iy + {4'd0, ystep}) >> 8) - 9'(iy >> 8);
 				iy <= iy + {4'd0, ystep};
+				// compressed: pixels stored in this row (skips here are 8.8)
+				rowpix <= ({1'b0, width} > {3'd0, skp_fp[15:8]}) ? width - {2'd0, skp_fp[15:8]} : 10'd0;
 				bstate <= B_ADV2;
 			end
 
 			B_ADV2: begin
-				if (!skip) begin
-					offset <= offset + ty * wbits;
-					bstate <= B_ROW;
-				end
-				else if (ty == 9'd0)
+				// the product now, the sum in B_ADV3
+				mprod <= ty * wbits;
+				bmul  <= bpp * rowpix;
+				if (skip && ty == 9'd0)
 					bstate <= B_ROW;
 				else begin
-					// past this row's data, then whole compressed rows
-					if ({1'b0, width} > {3'd0, skp_fp[15:8]})
-						o2 <= offset + 32'd8 + bpp * ({22'd0, width} - {24'd0, skp_fp[15:8]});
-					else
-						o2 <= offset + 32'd8;
 					skrows <= ty - 9'd1;
+					bstate <= B_ADV3;
+				end
+			end
+
+			B_ADV3: begin
+				if (!skip) begin
+					offset <= offset + {10'd0, mprod};
+					bstate <= B_ROW;
+				end
+				else begin
+					// past this row's skip byte and pixels, then whole
+					// compressed rows (B_SKROW reads at o)
+					o      <= offset + 32'd8 + {18'd0, bmul};
 					bstate <= B_SKROW;
 				end
 			end
 
 			B_SKROW: begin
 				if (skrows == 9'd0) begin
-					offset <= o2;
+					offset <= o;
 					bstate <= B_ROW;
 				end
 				else if (have) begin
 					// the skips here are in pixels (no 8.8)
 					pre_fp  <= {11'd0, sp_bits[3:0]} << preskip;
 					post_fp <= {11'd0, sp_bits[7:4]} << postskip;
-					o2      <= o2 + 32'd8;
+					o       <= o + 32'd8;
 					bstate  <= B_SKROW2;
 				end
 			end
 
 			B_SKROW2: begin
 				// skips in pixels here: at most 2 x 120
-				if ({1'b0, width} > {1'b0, skp_fp[9:0]})
-					o2 <= o2 + bpp * ({22'd0, width} - {22'd0, skp_fp[9:0]});
+				rowpix <= ({1'b0, width} > {1'b0, skp_fp[9:0]}) ? width - skp_fp[9:0] : 10'd0;
 				skrows <= skrows - 9'd1;
+				bstate <= B_SKROW3;
+			end
+
+			B_SKROW3: begin
+				bmul   <= bpp * rowpix;
+				bstate <= B_SKROW4;
+			end
+
+			B_SKROW4: begin
+				o      <= o + {18'd0, bmul};
 				bstate <= B_SKROW;
 			end
 
