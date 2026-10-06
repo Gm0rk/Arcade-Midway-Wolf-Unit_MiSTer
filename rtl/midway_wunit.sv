@@ -42,6 +42,8 @@ module midway_wunit
 	input             io_remap,      // WWF: a write to I/O word 0 picks the I/O order
 	input             pal_ring,      // UMK3: 100 machine cycles per write to the palette
 	                                 // ring pointers (MAME umk3_palette_hack_w)
+	input      [24:13] prog_base,    // SDRAM byte address of the program ROM (8 KB units):
+	                                 // 0, or the MRA's patched copy (see "Program ROM cache")
 	input       [1:0] vtiming,       // MiSTer option: 0 native frame (54.7 Hz), 1 277 lines
 	                                 // (57.1 Hz), 2 263 lines (60.1 Hz); see "Video timing"
 
@@ -105,8 +107,8 @@ module midway_wunit
 	output            dbg_retire
 );
 
-// SDRAM byte addresses of the regions (see the ROM layout in the MRA files)
-localparam [24:0] ROM_BASE = 25'h000_0000;
+// SDRAM byte addresses of the regions (see the ROM layout in the MRA files);
+// the program ROM's is prog_base (0 unless the patched copy is chosen)
 localparam [24:0] GFX_BASE = 25'h050_2000;
 localparam [24:0] RAM_BASE = 25'h1F8_0000;     // main RAM, the top 512 KB
 
@@ -346,6 +348,12 @@ wire sel_rom   = (wa[27:19] == 9'h1FF);
 
 //----------------------------------------------------------------------------
 // Program ROM cache: 2048 lines of 8 bytes, direct mapped (as on the Y Unit)
+//
+// Lines come from SDRAM at prog_base + the ROM offset. prog_base is 0 for
+// the program as dumped; an MRA can also load a patched copy of the program
+// after the graphics (cut content the OSD can turn on, UMK3), and the top
+// level points prog_base at it. It only changes during reset, and the cache
+// is cleared after every reset, so no line from the other copy survives.
 //----------------------------------------------------------------------------
 
 reg  [63:0] rc_data [0:2047];
@@ -1015,7 +1023,7 @@ always @(posedge clk) begin
 					bstate    <= S_IDLE;
 				end
 				else if (sd_idle) begin
-					cpu_sd_addr <= ROM_BASE[24:1] + {5'd0, rom_line, 2'b00};
+					cpu_sd_addr <= {prog_base, 12'd0} + {5'd0, rom_line, 2'b00};
 					cpu_sd_we   <= 1'b0;
 					cpu_sd_req  <= ~cpu_sd_req;
 					bstate      <= S_ROMFILL;
