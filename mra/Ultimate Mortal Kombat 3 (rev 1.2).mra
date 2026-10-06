@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Ultimate Mortal Kombat 3 (rev 1.2)</name>
-	<mratimestamp>20261005</mratimestamp>
+	<mratimestamp>20261006</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>umk3</setname>
 	<year>1994</year>
@@ -25,11 +25,12 @@
 0x100000 DCS sound ROMs (4 x 1 MB, MAME region bytes 0, 2, 4, ...)
 0x500000 security PIC (8 KB)
 0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 -- 5 -- --)
+0x1902000 program ROM again with the cut-content patches (OSD)
 	</romstruct>
 	<rom index="1">
-		<part>01 00 01 02 03 FF 04 FF FF FF</part>
+		<part>01 00 01 02 03 FF 04 FF FF FF 81 0C</part>
 	</rom>
-	<rom index="0" zip="umk3.zip" md5="8ba475ab84c1b05449ea52d6e229291b">
+	<rom index="0" zip="umk3.zip" md5="a29c1e521b7037a954ff4795ac8c2f56">
 		<!-- program ROM -->
 		<interleave output="16">
 			<part crc="712b4db6" name="l1.2_mortal_kombat_3_u54_ultimate.u54" map="01"/>
@@ -74,6 +75,14 @@
 			<part crc="a87523c8" name="umk-u111.bin" map="0100"/>
 			<part crc="0038f205" name="umk-u110.bin" map="1000"/>
 		</interleave>
+		<!-- program ROM again, patched below: the OSD's cut-content option -->
+		<interleave output="16">
+			<part crc="712b4db6" name="l1.2_mortal_kombat_3_u54_ultimate.u54" map="01"/>
+			<part crc="6d301faf" name="l1.2_mortal_kombat_3_u63_ultimate.u63" map="10"/>
+		</interleave>
+		<patch offset="0x197287C">00 48 DF FF</patch>
+		<patch offset="0x1972C9C">47 01 07 0B 60 00 EC A2 80 C0 60 18 9C FF 5F 0D 60 64 9B FF 00 03</patch>
+		<patch offset="0x19C0900">50 36 B6 FF 30 C3 B6 FF 20 4B B8 FF 02 02 66 00 68 00 0B 00 02 02 0D 00 FD FF 06 00 B7 00 0C 0C A0 6C B8 FF 80 5D B7 FF F0 6E B8 FF 80 6D B8 FF C0 81 B7 FF E0 6F B8 FF E0 6D B8 FF 20 89 B7 FF 70 70 B8 FF 10 6D B8 FF 50 40 B7 FF 40 72 B8 FF 00 4D B8 FF F0 53 B8 FF 00 00 00 00 40 4D B8 FF 50 53 B8 FF 00 00 00 00 C0 56 B8 FF 50 57 B8 FF 00 00 00 00 C0 4D B8 FF 20 52 B8 FF 00 00 00 00 60 4E B8 FF D0 4F B8 FF 00 00 00 00 E0 4E B8 FF B0 4F B8 FF 00 00 00 00 40 4C B8 FF 40 4A B8 FF 00 00 00 00 B0 4B B8 FF 60 4F B8 FF 00 00 00 00 70 6E B8 FF 00 00 00 00 A0 73 B8 FF 00 00 00 00</patch>
 	</rom>
 	<nvram index="2" size="49152"/>
 </misterromdescription>
