@@ -6,6 +6,7 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_dma.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_vram.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_video.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_pic.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_macro.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/midway_wunit.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/dcs_stub.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/sdram.sv
