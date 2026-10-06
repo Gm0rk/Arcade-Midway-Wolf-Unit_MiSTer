@@ -4,6 +4,7 @@
 |---|---|
 | `mra_gen.py` | Writes `mra/` from MAME's `midwunit.cpp`; `--check ROMDIR` assembles every MRA from the zips the way Main_MiSTer does (md5 included) and compares it with MAME's regions; `--regions DIR` also compares with region dumps taken from MAME |
 | `wunit_roms.py` | ROM image and configuration of a set, for the board simulation |
+| `cut_content.py` | Program ROM patches for content a game left unreachable (UMK3: Character Endings in the EJB menu), found in the ROM by pattern; `mra_gen.py` puts them in the MRA as a patched copy of the program. `cut_content.py umk3 PROGRAM.BIN` lists them |
 | `frame_compare.py` | Compares simulator frames with MAME's (`--scan`), writes side-by-side PNGs |
 | `timing_paths.tcl` | `quartus_sta -t tools/timing_paths.tcl`: the 1000 worst setup paths of the last compile, without recompiling |
 | `lua/dump_regions.lua` | MAME: dumps every ROM region it loaded |
