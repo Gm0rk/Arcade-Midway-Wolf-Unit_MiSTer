@@ -1,0 +1,70 @@
+<misterromdescription>
+	<name>Rampage: World Tour (rev 1.1)</name>
+	<mratimestamp>20261005</mratimestamp>
+	<mameversion>0289</mameversion>
+	<setname>rmpgwt11</setname>
+	<year>1997</year>
+	<manufacturer>Midway</manufacturer>
+	<category>Action / Destruction</category>
+	<rbf>Arcade-Midway-Wolf-Unit</rbf>
+	<remark>3 players</remark>
+	<switches default="BE,FB">
+		<dip bits="0" name="Coinage Source" ids="Dipswitch,CMOS" values="1,0"/>
+		<dip bits="1,5" name="Coinage" ids="USA-1,USA-2,USA-3,USA-4,USA-9,USA-10,USA-ECA,USA-Free Play,German-1,German-2,German-3,German-4,German-5,German-ECA,German-Free Play,French-1,French-2,French-3,French-4,French-11,French-12,French-ECA,French-Free Play" values="31,30,29,28,26,25,27,24,23,22,21,20,18,19,16,15,14,13,12,10,9,11,8"/>
+		<dip bits="6" name="Counters" ids="One,Two" values="1,0"/>
+		<dip bits="8" name="Bill Validator" ids="Off,On" values="1,0"/>
+		<dip bits="10" name="Powerup Test" ids="Off,On"/>
+		<dip bits="15" name="Test Switch" ids="Off,On" values="1,0"/>
+	</switches>
+	<buttons names="Jump,Punch,Kick,Start,Coin,Test,Pause" default="B,Y,X,Start,Select,-,-"/>
+	<romstruct>
+0x000000 program ROM (1 MB, 16-bit little endian)
+0x100000 DCS sound ROMs (4 x 1 MB, MAME region bytes 0, 2, 4, ...)
+0x500000 security PIC (8 KB)
+0x502000 graphics (4 x 4 MB slots of MAME's video region: 0 1 2 3 -- -- -- --)
+	</romstruct>
+	<rom index="1">
+		<part>05 00 01 02 03 FF FF FF FF FF</part>
+	</rom>
+	<rom index="0" zip="rmpgwt11.zip|rmpgwt.zip" md5="e3d364726916d8dee127e8e3edf49f56" type="merged">
+		<!-- program ROM -->
+		<interleave output="16">
+			<part crc="3aa514eb" name="1.1_rampage_world_u54_game.u54" map="01"/>
+			<part crc="031c908f" name="1.1_rampage_world_u63_game.u63" map="10"/>
+		</interleave>
+		<!-- DCS sound ROMs -->
+		<part crc="0e82f83d" name="1.0_rampage_world_tour_u2_sound.u2"/>
+		<part crc="3ff54d15" name="1.0_rampage_world_tour_u3_sound.u3"/>
+		<part crc="5c7f5656" name="1.0_rampage_world_tour_u4_sound.u4"/>
+		<part crc="fd9aaf24" name="1.0_rampage_world_tour_u5_sound.u5"/>
+		<!-- security PIC -->
+		<part crc="5c14d850" name="465_rampage_wt.u64"/>
+		<part repeat="0xFF7">00</part>
+		<!-- graphics -->
+		<interleave output="32">
+			<part crc="5b5ac449" name="1.0_rampage_world_tour_u133_image.u133" map="0001"/>
+			<part crc="7b3f09c6" name="1.0_rampage_world_tour_u132_image.u132" map="0010"/>
+			<part crc="fdecf12e" name="1.0_rampage_world_tour_u131_image.u131" map="0100"/>
+			<part crc="4a983b05" name="1.0_rampage_world_tour_u130_image.u130" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="dc495c6e" name="1.0_rampage_world_tour_u129_image.u129" map="0001"/>
+			<part crc="5545503d" name="1.0_rampage_world_tour_u128_image.u128" map="0010"/>
+			<part crc="6e1756ba" name="1.0_rampage_world_tour_u127_image.u127" map="0100"/>
+			<part crc="c300eb1b" name="1.0_rampage_world_tour_u126_image.u126" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="7369bf5d" name="1.0_rampage_world_tour_u125_image.u125" map="0001"/>
+			<part crc="c0bf88c8" name="1.0_rampage_world_tour_u124_image.u124" map="0010"/>
+			<part crc="ac4c712a" name="1.0_rampage_world_tour_u123_image.u123" map="0100"/>
+			<part crc="609862a2" name="1.0_rampage_world_tour_u122_image.u122" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="f65119b7" name="1.0_rampage_world_tour_u121_image.u121" map="0001"/>
+			<part crc="6d643dee" name="1.0_rampage_world_tour_u120_image.u120" map="0010"/>
+			<part crc="4e49c133" name="1.0_rampage_world_tour_u119_image.u119" map="0100"/>
+			<part crc="43a6f51e" name="1.0_rampage_world_tour_u118_image.u118" map="1000"/>
+		</interleave>
+	</rom>
+	<nvram index="2" size="49152"/>
+</misterromdescription>
