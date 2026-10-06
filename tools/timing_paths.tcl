@@ -1,10 +1,11 @@
 # --------------------------------------------------------------------------
 #
-# timing_paths.tcl - the 100 worst setup paths of the last compilation
+# timing_paths.tcl - the 1000 worst setup paths of the last compilation
 #
 # Reads the timing netlist Quartus left in db/ (no recompile) and writes
-# output_files/worst_paths.txt: a summary of the 100 worst setup paths of
-# every clock, then the full detail of the 10 worst.
+# output_files/worst_paths.txt: a summary of the 1000 worst setup paths
+# (enough to show every failing group, not only the worst one), then
+# the full detail of the 10 worst.
 #
 # Run from the project folder:
 #   quartus_sta -t tools/timing_paths.tcl
@@ -18,7 +19,7 @@ create_timing_netlist
 read_sdc
 update_timing_netlist
 
-report_timing -setup -npaths 100 -nworst 1 -detail summary \
+report_timing -setup -npaths 1000 -nworst 1 -detail summary \
 	-file output_files/worst_paths.txt
 report_timing -setup -npaths 10 -nworst 1 -detail full_path \
 	-file output_files/worst_paths.txt -append
