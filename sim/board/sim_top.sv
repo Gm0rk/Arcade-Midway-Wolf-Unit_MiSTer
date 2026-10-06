@@ -20,6 +20,7 @@ module sim_top
 	input      [63:0] gfx_slots,
 	input      [11:0] year,
 	input             io_remap,
+	input             pal_ring,
 	input       [7:0] dcs_version,
 	input      [19:0] dcs_delay,
 	input      [15:0] in0,
@@ -63,7 +64,14 @@ module sim_top
 
 	// debug
 	output     [31:0] dbg_pc,
-	output            dbg_retire
+	output            dbg_retire,
+
+	// CPU bus writes as the 34010 completes them (tb_board -buslog)
+	output            dbg_wr,
+	output     [27:0] dbg_waddr,
+	output     [15:0] dbg_wdata,
+	output            dbg_dma_irq,   // INT1
+	output            dbg_dma_drawn  // the blitter has drawn and waits for its timer
 );
 
 wire [24:1] cpu_sd_addr;
@@ -87,6 +95,7 @@ midway_wunit board
 	.gfx_slots      (gfx_slots),
 	.year           (year),
 	.io_remap       (io_remap),
+	.pal_ring       (pal_ring),
 	.vtiming        (2'd0),
 
 	.in0            (in0),
@@ -141,6 +150,13 @@ midway_wunit board
 	.dbg_pc         (dbg_pc),
 	.dbg_retire     (dbg_retire)
 );
+
+// a write completes when the CPU sees its ack in a cpu_ce cycle
+assign dbg_wr    = board.cpu_ce & board.mem_ack & board.mem_wr;
+assign dbg_waddr = board.mem_addr;
+assign dbg_wdata = board.mem_wdata;
+assign dbg_dma_irq   = board.dma_irq;
+assign dbg_dma_drawn = (board.dma.bstate == 5'd23);
 
 dcs_stub sound
 (
