@@ -72,6 +72,10 @@ localparam CONF_STR = {
 	"P2O[9],Service Mode,Off,On;",
 	"P2T[12],Service Credit;",
 	"P2T[13],Tilt;",
+	"H5-;",
+	"H2R[16],Open EJB Menu (attract mode);",
+	"H3R[16],Open Secret Midway Menu;",
+	"H4O[17],EJB Character Endings,Off,On;",
 	"-;",
 	"DIP;",
 	"-;",
@@ -82,6 +86,12 @@ localparam CONF_STR = {
 	"jn,A,B,X,Y,L,R,Start,Select,,;",
 	"V,v",`BUILD_DATE
 };
+
+// OSD items a game has (see "Hidden menus and cut content")
+reg         is_mk;                   // MK3 / UMK3: EJB menu
+reg         is_hangtime;             // NBA Hangtime / Maximum Hangtime: Secret Midway Menu
+reg         alt_present;             // the MRA brought a patched program copy (UMK3)
+wire        has_hidden = is_mk | is_hangtime | alt_present;
 
 wire        forced_scandoubler;
 wire        direct_video;
@@ -114,7 +124,7 @@ hps_io #(.CONF_STR(CONF_STR), .CONF_STR_BRAM(1), .WIDE(1)) hps_io
 
 	.buttons             (buttons),
 	.status              (status),
-	.status_menumask     ({14'd0, ~status[101], 1'b0}),
+	.status_menumask     ({10'd0, ~has_hidden, ~alt_present, ~is_hangtime, ~is_mk, ~status[101], 1'b0}),
 
 	.ps2_key             (ps2_key),
 
@@ -167,13 +177,17 @@ always @(posedge clk_sys) begin
 end
 
 wire ram_clearing;
-wire reset = RESET | status[0] | buttons[1] | rom_download | ~rom_loaded | (boot_hold != 26'd0) | ram_clearing;
+reg  [7:0] opt_rst = 8'd0;          // reset after the cut-content option changes
+wire reset = RESET | status[0] | buttons[1] | rom_download | ~rom_loaded | (boot_hold != 26'd0) | ram_clearing |
+             (opt_rst != 8'd0);
 
 //////////////////////////////////////////////////////////////////
 // Game configuration
 //
 // MRA ROM index 1: byte 0 the game id, bytes 1-8 where each 4 MB slot of
-// MAME's graphics region went in the ROM image (FF: not present).
+// MAME's graphics region went in the ROM image (FF: not present), byte 9
+// FF, bytes 10-11 where a patched copy of the program ROM starts (8 KB
+// units, little endian; 0: none). Older MRAs end at byte 9.
 //////////////////////////////////////////////////////////////////
 
 localparam G_MK3      = 3'd0;    // Mortal Kombat 3
@@ -229,10 +243,16 @@ end
 //////////////////////////////////////////////////////////////////
 
 reg  [63:0] dsw;
-reg   [7:0] cfg [0:9];               // the configuration bytes as they arrive
+reg   [7:0] cfg [0:11];              // the configuration bytes as they arrive
+reg  [15:0] cfg_alt;                 // patched program copy, 8 KB units (0: none)
 
 always @(posedge clk_sys) begin
-	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr < 27'd10) begin
+	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr == 27'd0) begin
+		// a new configuration: forget the optional bytes of the last one
+		cfg[10] <= 8'd0;
+		cfg[11] <= 8'd0;
+	end
+	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr < 27'd12) begin
 		cfg[ioctl_addr[3:0]]         <= ioctl_dout[7:0];
 		cfg[ioctl_addr[3:0] + 4'd1]  <= ioctl_dout[15:8];
 	end
@@ -241,6 +261,7 @@ always @(posedge clk_sys) begin
 
 	game_id   <= cfg[0][2:0];
 	gfx_slots <= {cfg[8], cfg[7], cfg[6], cfg[5], cfg[4], cfg[3], cfg[2], cfg[1]};
+	cfg_alt   <= {cfg[11], cfg[10]};
 end
 
 reg  [24:1] sd_wr_addr;
@@ -463,6 +484,54 @@ always @(posedge clk_sys) begin
 	end
 end
 
+//////////////////////////////////////////////////////////////////
+// Hidden menus and cut content
+//
+// "Open EJB Menu" (MK3, UMK3) and "Open Secret Midway Menu" (NBA Hangtime,
+// Maximum Hangtime) enter the game's own button code for its hidden menu
+// (rtl/wunit_macro.sv lists the codes); the buttons are pressed on IN0 on
+// top of the controls. They share status bit 16; only the game's own line
+// is shown.
+//
+// "EJB Character Endings" (UMK3) runs the patched copy of the program ROM
+// the MRA loads after the graphics: the EJB menu gets back the CHARACTER
+// ENDINGS item that MK3 had and UMK3 left out of its menu (its code is
+// still in the ROM), and an ending shows the story as well as the cast
+// roll. The copy is chosen at reset; changing the option resets the game.
+//////////////////////////////////////////////////////////////////
+
+reg         prog_alt;                // running the patched program copy
+reg         opt_d;
+reg         code_d;
+wire [15:0] macro_press;
+
+always @(posedge clk_sys) begin
+	is_mk       <= (game_id == G_MK3) || (game_id == G_UMK3);
+	is_hangtime <= (game_id == G_NBAHANGT);
+	alt_present <= (cfg_alt != 16'd0);
+
+	if (reset)
+		prog_alt <= status[17] & alt_present;
+
+	opt_d  <= status[17];
+	code_d <= status[16];
+	if (alt_present && (status[17] != opt_d))
+		opt_rst <= 8'hFF;
+	else if (opt_rst != 8'd0)
+		opt_rst <= opt_rst - 8'd1;
+end
+
+wunit_macro macro
+(
+	.clk    (clk_sys),
+	.reset  (reset),
+	.start  (status[16] & ~code_d),
+	.code   (is_mk ? 2'd1 : is_hangtime ? 2'd2 : 2'd0),
+	.frame  (osd_frame),
+	.press  (macro_press),
+	.busy   ()
+);
+
 midway_wunit board
 (
 	.clk            (clk_sys),
@@ -473,9 +542,10 @@ midway_wunit board
 	.year           (cfg_year),
 	.io_remap       (cfg_io_remap),
 	.pal_ring       (cfg_pal_ring),
+	.prog_base      (prog_alt ? cfg_alt[11:0] : 12'd0),
 	.vtiming        (status[15:14]),    // 54.7 / 57 / 60 Hz frames (see midway_wunit.sv)
 
-	.in0            (~in0),
+	.in0            (~(in0 | macro_press)),
 	.in1            (~in1),
 	.dsw            (dsw[15:0]),
 	.in2            (~in2),
