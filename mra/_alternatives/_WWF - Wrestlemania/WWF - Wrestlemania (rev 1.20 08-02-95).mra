@@ -1,0 +1,71 @@
+<misterromdescription>
+	<name>WWF: Wrestlemania (rev 1.20 08/02/95)</name>
+	<mratimestamp>20261005</mratimestamp>
+	<mameversion>0289</mameversion>
+	<setname>wwfmaniab</setname>
+	<year>1995</year>
+	<manufacturer>Midway</manufacturer>
+	<category>Fighter / Versus</category>
+	<rbf>Arcade-Midway-Wolf-Unit</rbf>
+	<remark>2 players</remark>
+	<switches default="FD,7F">
+		<dip bits="0" name="Test Switch" ids="Off,On" values="1,0"/>
+		<dip bits="1" name="Powerup Test" ids="Off,On"/>
+		<dip bits="3" name="Realtime Clock" ids="No,Yes" values="1,0"/>
+		<dip bits="6" name="Bill Validator" ids="Off,On" values="1,0"/>
+		<dip bits="8,9" name="Counters" ids="One, 1/1,One, Totalizing,Two, 1/1" values="3,2,1"/>
+		<dip bits="10,11" name="Country" ids="USA,French,German" values="3,2,1"/>
+		<dip bits="12,14" name="Coinage" ids="1,2,3,4,ECA,Free Play" values="7,3,5,1,6,0"/>
+		<dip bits="15" name="Coinage Source" ids="Dipswitch,CMOS" values="1,0"/>
+	</switches>
+	<buttons names="Punch,Defense,Power Punch,Kick,Power Kick,Start,Coin,Test,Pause" default="Y,R,X,B,A,Start,Select,-,-"/>
+	<romstruct>
+0x000000 program ROM (1 MB, 16-bit little endian)
+0x100000 DCS sound ROMs (4 x 1 MB, MAME region bytes 0, 2, 4, ...)
+0x500000 security PIC (8 KB)
+0x502000 graphics (4 x 4 MB slots of MAME's video region: 0 1 2 3 -- -- -- --)
+	</romstruct>
+	<rom index="1">
+		<part>02 00 01 02 03 FF FF FF FF FF</part>
+	</rom>
+	<rom index="0" zip="wwfmaniab.zip|wwfmania.zip" md5="2d09bd2be801963dedd6a19464e0edc4" type="merged">
+		<!-- program ROM -->
+		<interleave output="16">
+			<part crc="1b2dce48" name="wwf_game_rom_l1.20.u54" map="01"/>
+			<part crc="1262f0bb" name="wwf_game_rom_l1.20.u63" map="10"/>
+		</interleave>
+		<!-- DCS sound ROMs -->
+		<part crc="a9acb250" name="wwf_music-spch_l1.u2"/>
+		<part crc="9442b6c9" name="wwf_music-spch_l1.u3"/>
+		<part crc="cee78fac" name="wwf_music-spch_l1.u4"/>
+		<part crc="5b31fd40" name="wwf_music-spch_l1.u5"/>
+		<!-- security PIC -->
+		<part repeat="0x2000">00</part>
+		<!-- graphics -->
+		<interleave output="32">
+			<part crc="5e1b1e3d" name="wwf_image_rom_l1.u133" map="0001"/>
+			<part crc="5943b3b2" name="wwf_image_rom_l1.u132" map="0010"/>
+			<part crc="0815db22" name="wwf_image_rom_l1.u131" map="0100"/>
+			<part crc="9ee9a145" name="wwf_image_rom_l1.u130" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="c644c2f4" name="wwf_image_rom_l1.u129" map="0001"/>
+			<part crc="fcda4e9a" name="wwf_image_rom_l1.u128" map="0010"/>
+			<part crc="45be7428" name="wwf_image_rom_l1.u127" map="0100"/>
+			<part crc="eaa276a8" name="wwf_image_rom_l1.u126" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="a19ebeed" name="wwf_image_rom_l1.u125" map="0001"/>
+			<part crc="dc7d3dbb" name="wwf_image_rom_l1.u124" map="0010"/>
+			<part crc="e0ade56f" name="wwf_image_rom_l1.u123" map="0100"/>
+			<part crc="2800c78d" name="wwf_image_rom_l1.u122" map="1000"/>
+		</interleave>
+		<interleave output="32">
+			<part crc="a28ffcba" name="wwf_image_rom_l1.u121" map="0001"/>
+			<part crc="3a05d371" name="wwf_image_rom_l1.u120" map="0010"/>
+			<part crc="97ffa659" name="wwf_image_rom_l1.u119" map="0100"/>
+			<part crc="46668e97" name="wwf_image_rom_l1.u118" map="1000"/>
+		</interleave>
+	</rom>
+	<nvram index="2" size="49152"/>
+</misterromdescription>
