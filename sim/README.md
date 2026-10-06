@@ -1,0 +1,37 @@
+# Simulation
+
+Verilator 5. Neither folder is part of the core's file list.
+
+## `dma/` - blitter against MAME's code
+
+`mame_dma.h` is MAME 0.289's `dma_w` / `dma_draw` with the template
+arguments made run-time arguments. `tb_dma.cpp` drives `rtl/wunit_dma.sv`
+through its register interface with random blits (every mode, 1-8 bpp,
+skip compression, start / end skip in both forms, scaling, X/Y flip, both
+clip banks, out-of-range offsets), a graphics ROM with random latency and a
+model of the VRAM controller reading the row buffer, then compares the frame
+store and the completion time with MAME's.
+
+```
+make && ./obj_dir/Vwunit_dma 3000 1              # tests, seed
+./obj_dir/Vwunit_dma replay <seed> <18 registers> # one blit, as a failure prints it
+```
+
+## `board/` - the whole board
+
+`sim_top.sv` is the board, the sound board placeholder and the real SDRAM
+controller; `tb_board.cpp` adds an SDRAM chip model on the controller's
+pins, a DDR3 bridge model and video capture. Frames come out as MAME's
+`screen:pixels()` does, so `tools/frame_compare.py` compares them directly.
+
+```
+python3 tools/wunit_roms.py --mame MAME_SRC --roms ROMDIR --out simroms umk3
+make -C sim/board
+sim/board/obj_dir/Vsim_top simroms umk3 out/umk3 1,60,120,150,200 -press 150:in0:0010:5
+sim/board/run_ref.sh wtunit ROMDIR ref umk3 1,60,120,150,200 150:IN0:0010:5
+python3 tools/frame_compare.py --scan out/umk3 ref/umk3
+```
+
+Frame numbers line up with MAME's frame notifier (simulator frame n = MAME
+frame n). `altsyncram.sv` is a behavioural model of the one megafunction the
+core instantiates.
