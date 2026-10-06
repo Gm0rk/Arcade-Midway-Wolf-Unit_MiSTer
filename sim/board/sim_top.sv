@@ -6,8 +6,9 @@
 //  The C++ side (tb_board.cpp) models the SDRAM chip on its pins, the DDR3
 //  bridge on its Avalon port, and captures the video. ROM downloads are
 //  skipped: the C++ side writes the ROM image straight into its SDRAM model.
-//  The secret menu code player (rtl/wunit_macro.sv) sits on IN0 as in the
-//  top level, started by the C++ side instead of the OSD.
+//  The secret menu code player (rtl/wunit_macro.sv) sits on IN0 and the
+//  Kombat Kode player (rtl/wunit_kodes.sv) on IN0 and IN1 as in the top
+//  level, started by the C++ side instead of the OSD.
 //
 //  Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
 //============================================================================
@@ -26,6 +27,11 @@ module sim_top
 	input      [24:13] prog_base,     // patched program copy (0: the original)
 	input             code_start,    // one clock: enter the hidden menu code
 	input       [1:0] code_sel,      // 1 EJB menu, 2 Secret Midway Menu
+	input             kode_sel,      // one clock: pick Kombat Kode kode_idx
+	input       [5:0] kode_idx,
+	input      [15:0] kode_state,    // the game's state variable, main RAM word (0: none)
+	output            kode_info_req, // the player's OSD message
+	output      [7:0] kode_info,
 	input       [7:0] dcs_version,
 	input      [19:0] dcs_delay,
 	input      [15:0] in0,
@@ -108,6 +114,34 @@ wunit_macro macro
 	.busy   ()
 );
 
+// the Kombat Kode player, watching the game's state variable
+wire [15:0] kode_press0, kode_press1;
+wire        ram_wr;
+wire [17:0] ram_wa;
+wire [15:0] ram_wd;
+reg         kstate_wr;
+reg  [15:0] kstate_val;
+always @(posedge clk) begin
+	kstate_wr  <= ram_wr && (kode_state != 16'd0) && (ram_wa == {2'b00, kode_state});
+	kstate_val <= ram_wd;
+end
+
+wunit_kodes kodes
+(
+	.clk       (clk),
+	.reset     (reset),
+	.sel       (kode_sel),
+	.sel_idx   (kode_idx),
+	.state_wr  (kstate_wr),
+	.state_val (kstate_val),
+	.frame     (vid_vb & ~vb_d),
+	.press0    (kode_press0),
+	.press1    (kode_press1),
+	.info_req  (kode_info_req),
+	.info      (kode_info),
+	.busy      ()
+);
+
 midway_wunit board
 (
 	.clk            (clk),
@@ -121,8 +155,8 @@ midway_wunit board
 	.prog_base      (prog_base),
 	.vtiming        (2'd0),
 
-	.in0            (in0 & ~macro_press),   // active low
-	.in1            (in1),
+	.in0            (in0 & ~macro_press & ~kode_press0),   // active low
+	.in1            (in1 & ~kode_press1),
 	.dsw            (dsw),
 	.in2            (in2),
 
@@ -160,6 +194,10 @@ midway_wunit board
 	.nv_din         (16'd0),
 	.nv_dout        (),
 	.cmos_write     (),
+
+	.ram_wr         (ram_wr),
+	.ram_wa         (ram_wa),
+	.ram_wd         (ram_wd),
 
 	.ce_pix         (ce_pix),
 	.vid_r          (vid_r),

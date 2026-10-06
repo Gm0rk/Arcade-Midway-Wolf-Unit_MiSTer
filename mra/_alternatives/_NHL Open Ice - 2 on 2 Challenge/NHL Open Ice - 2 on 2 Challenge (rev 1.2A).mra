@@ -27,7 +27,7 @@
 0x502000 graphics (4 x 4 MB slots of MAME's video region: 0 1 2 3 -- -- -- --)
 	</romstruct>
 	<rom index="1">
-		<part>03 00 01 02 03 FF FF FF FF FF 00 00</part>
+		<part>03 00 01 02 03 FF FF FF FF FF 00 00 00 00</part>
 	</rom>
 	<rom index="0" zip="openicea.zip|openice.zip" md5="43fde08f183a095bf4de6761ed6a0161" type="merged">
 		<!-- program ROM -->

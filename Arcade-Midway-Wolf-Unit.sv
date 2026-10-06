@@ -2,7 +2,8 @@
 //  Midway Wolf Unit for MiSTer
 //
 //  Top level (emu): HPS interface, ROM loading, memories, per-game
-//  configuration and inputs, video output with CRT Adjust, audio.
+//  configuration and inputs, the OSD's code players (hidden menus, Kombat
+//  Kodes), video output with CRT Adjust, audio.
 //
 //  Clocks: everything runs from one 96 MHz clock (clk_sys). The 34010 and
 //  the pixel clock (8 MHz) are clock enables derived from it.
@@ -76,6 +77,67 @@ localparam CONF_STR = {
 	"H2R[16],Open EJB Menu (attract mode);",
 	"H3R[16],Open Secret Midway Menu;",
 	"H4O[17],EJB Character Endings,Off,On;",
+	"H2P3,Kombat Kodes;",
+	"P3-;",
+	"P3-,-- Fight --;",
+	"P3R[18],Throwing Disabled 100-100;",
+	"P3R[19],Blocking Disabled 020-020;",
+	"P3R[20],No Powerbars 987-123;",
+	"P3R[21],Unlimited Run 466-466;",
+	"P3R[22],Dark Kombat 688-422;",
+	"P3R[23],Randper Kombat 460-460;",
+	"P3R[24],Psycho Kombat 985-125;",
+	"P3R[25],P1 Half Power 033-000;",
+	"P3R[26],P2 Half Power 000-033;",
+	"P3R[27],P1 Quarter Power 707-000;",
+	"P3R[28],P2 Quarter Power 000-707;",
+	"H6P3R[29],Sans Power 044-440;",
+	"H6P3R[30],Uppercut Recovery 788-322;",
+	"H6P3R[31],Throwing Encouraged 010-010;",
+	"H6P3R[32],Silent Kombat 300-300;",
+	"H6P3R[33],Explosive Kombat 227-227;",
+	"H6P3R[34],Explosive No Throws 022-220;",
+	"P3R[35],Galaga 642-468;",
+	"P3-;",
+	"P3-,-- Round 1 winner battles --;",
+	"P3R[36],Motaro 969-141;",
+	"P3R[37],Shao Kahn 033-564;",
+	"P3R[38],Noob Saibot 769-342;",
+	"P3R[39],Smoke 205-205;",
+	"H6P3-;",
+	"H6P3-,-- Kombat Zone --;",
+	"H6P3R[40],Subway 880-088;",
+	"H6P3R[41],Street 079-035;",
+	"H6P3R[42],Rooftop 343-343;",
+	"H6P3R[43],Kahn's Tower 880-220;",
+	"H6P3R[44],The Bridge 077-022;",
+	"H6P3R[45],Soul Chamber 123-901;",
+	"H6P3R[46],Bell Tower 091-190;",
+	"H6P3R[47],Kombat Temple 600-040;",
+	"H6P3R[48],The Graveyard 666-333;",
+	"H6P3R[49],The Pit 3 820-028;",
+	"H6P3R[50],River Kombat 002-003;",
+	"H6P3R[51],Scorpion's Lair 666-444;",
+	"H6P3R[52],Kahn's Kave 004-700;",
+	"H6P3R[53],Jade's Desert 330-033;",
+	"H6P3R[54],Scislac Busorez 933-933;",
+	"H6P3R[55],Noob Saibot Dorfen 050-050;",
+	"P3-;",
+	"P3-,-- Messages --;",
+	"P3R[56],Hold Flippers 987-666;",
+	"P3R[57],No Fear 282-282;",
+	"P3R[58],No Knowledge 123-926;",
+	"H6P3R[59],Revision 999-999;",
+	"H6P3R[60],MK Live Tour 550-550;",
+	"H6P3R[61],Rain Can Be Found 717-313;",
+	"H6P3R[62],Don't Jump At Me 448-844;",
+	"H6P3R[63],Skunky !! 122-221;",
+	"H6P3R[64],Whatcha Gun Do ? 004-400;",
+	"H6P3-;",
+	"H6P3-,-- Ultimate Kombat Kodes --;",
+	"H6P3R[65],Mileena 22264-22264;",
+	"H6P3R[66],Ermac 12344-44321;",
+	"H6P3R[67],Classic Sub-Zero 81835-81835;",
 	"-;",
 	"DIP;",
 	"-;",
@@ -84,11 +146,15 @@ localparam CONF_STR = {
 	"R[0],Reset;",
 	"J1,B1,B2,B3,B4,B5,B6,Start,Coin,Test,Pause;",
 	"jn,A,B,X,Y,L,R,Start,Select,,;",
+	"I,Kode set for next VS screen,Kode set for next game over,Kombat Kode entered;",
 	"V,v",`BUILD_DATE
 };
 
 // OSD items a game has (see "Hidden menus and cut content")
-reg         is_mk;                   // MK3 / UMK3: EJB menu
+reg         is_mk;                   // MK3 / UMK3: EJB menu, Kombat Kodes
+reg         is_umk3;                 // UMK3: its own Kombat Kodes
+wire        kode_info_req;           // the Kombat Kode player's OSD messages
+wire  [7:0] kode_info;
 reg         is_hangtime;             // NBA Hangtime / Maximum Hangtime: Secret Midway Menu
 reg         alt_present;             // the MRA brought a patched program copy (UMK3)
 wire        has_hidden = is_mk | is_hangtime | alt_present;
@@ -124,7 +190,10 @@ hps_io #(.CONF_STR(CONF_STR), .CONF_STR_BRAM(1), .WIDE(1)) hps_io
 
 	.buttons             (buttons),
 	.status              (status),
-	.status_menumask     ({10'd0, ~has_hidden, ~alt_present, ~is_hangtime, ~is_mk, ~status[101], 1'b0}),
+	.info_req            (kode_info_req),
+	.info                (kode_info),
+
+	.status_menumask     ({9'd0, ~is_umk3, ~has_hidden, ~alt_present, ~is_hangtime, ~is_mk, ~status[101], 1'b0}),
 
 	.ps2_key             (ps2_key),
 
@@ -187,7 +256,9 @@ wire reset = RESET | status[0] | buttons[1] | rom_download | ~rom_loaded | (boot
 // MRA ROM index 1: byte 0 the game id, bytes 1-8 where each 4 MB slot of
 // MAME's graphics region went in the ROM image (FF: not present), byte 9
 // FF, bytes 10-11 where a patched copy of the program ROM starts (8 KB
-// units, little endian; 0: none). Older MRAs end at byte 9.
+// units, little endian; 0: none), bytes 12-13 the word in main RAM of the
+// game's state variable that the Kombat Kode player watches (MK3, UMK3;
+// little endian; 0: none). Older MRAs end at byte 9 or 11.
 //////////////////////////////////////////////////////////////////
 
 localparam G_MK3      = 3'd0;    // Mortal Kombat 3
@@ -243,16 +314,19 @@ end
 //////////////////////////////////////////////////////////////////
 
 reg  [63:0] dsw;
-reg   [7:0] cfg [0:11];              // the configuration bytes as they arrive
+reg   [7:0] cfg [0:13];              // the configuration bytes as they arrive
 reg  [15:0] cfg_alt;                 // patched program copy, 8 KB units (0: none)
+reg  [15:0] cfg_kstate;              // the game's state variable, word in main RAM (0: none)
 
 always @(posedge clk_sys) begin
 	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr == 27'd0) begin
 		// a new configuration: forget the optional bytes of the last one
 		cfg[10] <= 8'd0;
 		cfg[11] <= 8'd0;
+		cfg[12] <= 8'd0;
+		cfg[13] <= 8'd0;
 	end
-	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr < 27'd12) begin
+	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr < 27'd14) begin
 		cfg[ioctl_addr[3:0]]         <= ioctl_dout[7:0];
 		cfg[ioctl_addr[3:0] + 4'd1]  <= ioctl_dout[15:8];
 	end
@@ -262,6 +336,7 @@ always @(posedge clk_sys) begin
 	game_id   <= cfg[0][2:0];
 	gfx_slots <= {cfg[8], cfg[7], cfg[6], cfg[5], cfg[4], cfg[3], cfg[2], cfg[1]};
 	cfg_alt   <= {cfg[11], cfg[10]};
+	cfg_kstate <= {cfg[13], cfg[12]};
 end
 
 reg  [24:1] sd_wr_addr;
@@ -532,6 +607,62 @@ wunit_macro macro
 	.busy   ()
 );
 
+//////////////////////////////////////////////////////////////////
+// Kombat Kodes (MK3, UMK3)
+//
+// The "Kombat Kodes" page lists the kodes the game's program ROM has (the
+// UMK3-only lines hidden on MK3), each a trigger on status bits 18-67 in
+// page order. A pick is entered by the player (rtl/wunit_kodes.sv) at the
+// next screen that takes it: the VS screen of a two-player fight, or, for
+// an Ultimate Kombat Kode (UMK3), the game over screen. It finds those by
+// the game's state variable, whose main RAM word the MRA gives (config
+// bytes 12-13). An OSD message says the kode is waiting, then entered.
+//////////////////////////////////////////////////////////////////
+
+wire [49:0] kode_bits = status[67:18];
+reg  [49:0] kode_bits_d;
+reg         kode_sel;
+reg   [5:0] kode_idx;
+wire [15:0] kode_press0, kode_press1;
+
+wire        ram_wr;                  // main RAM writes from the board
+wire [17:0] ram_wa;
+wire [15:0] ram_wd;
+reg         kstate_wr;               // one of them was to the state variable
+reg  [15:0] kstate_val;
+
+integer ki;
+always @(posedge clk_sys) begin
+	is_umk3 <= (game_id == G_UMK3);
+
+	kode_bits_d <= kode_bits;
+	kode_sel    <= 1'b0;
+	for (ki = 49; ki >= 0; ki = ki - 1)
+		if (kode_bits[ki] & ~kode_bits_d[ki]) begin
+			kode_sel <= 1'b1;
+			kode_idx <= ki[5:0];
+		end
+
+	kstate_wr  <= ram_wr && (cfg_kstate != 16'd0) && (ram_wa == {2'b00, cfg_kstate});
+	kstate_val <= ram_wd;
+end
+
+wunit_kodes kodes
+(
+	.clk       (clk_sys),
+	.reset     (reset),
+	.sel       (kode_sel & is_mk),
+	.sel_idx   (kode_idx),
+	.state_wr  (kstate_wr),
+	.state_val (kstate_val),
+	.frame     (osd_frame),
+	.press0    (kode_press0),
+	.press1    (kode_press1),
+	.info_req  (kode_info_req),
+	.info      (kode_info),
+	.busy      ()
+);
+
 midway_wunit board
 (
 	.clk            (clk_sys),
@@ -545,8 +676,8 @@ midway_wunit board
 	.prog_base      (prog_alt ? cfg_alt[11:0] : 12'd0),
 	.vtiming        (status[15:14]),    // 54.7 / 57 / 60 Hz frames (see midway_wunit.sv)
 
-	.in0            (~(in0 | macro_press)),
-	.in1            (~in1),
+	.in0            (~(in0 | macro_press | kode_press0)),
+	.in1            (~(in1 | kode_press1)),
 	.dsw            (dsw[15:0]),
 	.in2            (~in2),
 
@@ -584,6 +715,10 @@ midway_wunit board
 	.nv_din         (nv_din),
 	.nv_dout        (nv_dout),
 	.cmos_write     (cmos_write),
+
+	.ram_wr         (ram_wr),
+	.ram_wa         (ram_wa),
+	.ram_wd         (ram_wd),
 
 	.ce_pix         (ce_pix),
 	.vid_r          (core_r),

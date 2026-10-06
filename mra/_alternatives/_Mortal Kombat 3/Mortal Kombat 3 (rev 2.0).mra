@@ -27,7 +27,7 @@
 0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 4 -- -- --)
 	</romstruct>
 	<rom index="1">
-		<part>00 00 01 02 03 04 FF FF FF FF 00 00</part>
+		<part>00 00 01 02 03 04 FF FF FF FF 00 00 96 60</part>
 	</rom>
 	<rom index="0" zip="mk3r20.zip|mk3.zip" md5="3b49d72a90f0273da79e691e662a6a82" type="merged">
 		<!-- program ROM -->

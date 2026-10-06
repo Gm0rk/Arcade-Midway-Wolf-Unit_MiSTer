@@ -26,6 +26,9 @@
 //                     EJB Menu" / "Open Secret Midway Menu")
 //     -alt            run the patched program copy (OSD "EJB Character
 //                     Endings"; the set's .cfg must have one)
+//     -kode N@F       at frame F, pick Kombat Kode N (OSD "Kombat Kodes",
+//                     status bit 18 + N; tools/kombat_kodes.py --core lists
+//                     them); the player's OSD messages are printed
 //     -pctrace FILE   write every retired instruction's PC
 //     -pcframes A B   only in frames A-B (each line: frame, PC)
 //
@@ -203,6 +206,7 @@ int main(int argc, char **argv)
 	int dsw_override = -1;
 	bool no_pal_ring = false;
 	int code_frame = -1;
+	int kode_n = -1, kode_frame = -1;
 	bool use_alt = false;
 	FILE *bl = nullptr;
 	int bl_from = 0, bl_to = 0;
@@ -212,6 +216,7 @@ int main(int argc, char **argv)
 		else if (!strcmp(argv[i], "-nopalring")) no_pal_ring = true;
 		else if (!strcmp(argv[i], "-code")) code_frame = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "-alt")) use_alt = true;
+		else if (!strcmp(argv[i], "-kode")) sscanf(argv[++i], "%d@%d", &kode_n, &kode_frame);
 		else if (!strcmp(argv[i], "-buslog")) {
 			bl = fopen(argv[++i], "w");
 			bl_from = atoi(argv[++i]);
@@ -266,6 +271,9 @@ int main(int argc, char **argv)
 	top->prog_base = use_alt ? (alt >> 13) : 0;
 	top->code_sel = (game == 0 || game == 1) ? 1 : (game == 4) ? 2 : 0;
 	top->code_start = 0;
+	top->kode_sel = 0;
+	top->kode_idx = kode_n >= 0 ? kode_n : 0;
+	top->kode_state = strtoul(cfg["kode_state"].c_str(), nullptr, 16);
 	top->dcs_version = dcs_ver[game];
 	top->dcs_delay = dcs_dly[game];
 	top->dsw = dsw_override >= 0 ? dsw_override : strtol(cfg["dsw"].c_str(), nullptr, 16);
@@ -286,16 +294,22 @@ int main(int argc, char **argv)
 	}
 	top->reset = 0;
 
-	bool code_done = false;
+	bool code_done = false, kode_done = false;
+	static const char *kode_msg[4] = {"", "Kode set for next VS screen", "Kode set for next game over", "Kombat Kode entered"};
 	while (frame_no < exit_at) {
 		// the OSD trigger: one clock
 		top->code_start = !code_done && code_frame >= 0 && frame_no >= code_frame;
 		if (top->code_start) code_done = true;
+		top->kode_sel = !kode_done && kode_n >= 0 && frame_no >= kode_frame;
+		if (top->kode_sel) kode_done = true;
 		ddr_before_edge();
 		bool ce = top->ce_pix;
 		top->clk = 1; top->eval();
 		sdram_after_edge();
 		if (ce) video_sample();
+		if (top->kode_info_req)
+			fprintf(stderr, "frame %d: OSD info %d: %s\n", frame_no, top->kode_info,
+			        top->kode_info < 4 ? kode_msg[top->kode_info] : "?");
 		if (pct && top->dbg_retire && frame_no >= pc_from && frame_no <= pc_to)
 			fprintf(pct, "%05d %08x\n", frame_no, top->dbg_pc);
 		static bool irq_d = false, drawn_d = false;

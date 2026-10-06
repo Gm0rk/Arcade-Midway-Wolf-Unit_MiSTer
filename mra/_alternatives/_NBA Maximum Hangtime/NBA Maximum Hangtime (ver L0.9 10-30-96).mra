@@ -26,7 +26,7 @@
 0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 -- 5 -- --)
 	</romstruct>
 	<rom index="1">
-		<part>04 00 01 02 03 FF 04 FF FF FF 00 00</part>
+		<part>04 00 01 02 03 FF 04 FF FF FF 00 00 00 00</part>
 	</rom>
 	<rom index="0" zip="nbamhtp.zip|nbahangt.zip" md5="8bd85b0a6a526dcb1dcfe087a89d411f" type="merged">
 		<!-- program ROM -->

@@ -26,6 +26,8 @@
 //      maps by writing word 0; MAME wwfmania_io_0_w)
 //    - the palette is 32K colours and the pens are 15 bits
 //    - UMK3: MAME's palette-ring penalty (see "Machine cycles")
+//    - main RAM writes are passed out (ram_wr), for the top level's Kombat
+//      Kode player
 //
 //  Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
 //============================================================================
@@ -91,6 +93,12 @@ module midway_wunit
 	input      [15:0] nv_din,
 	output     [15:0] nv_dout,
 	output            cmos_write,    // the game wrote its CMOS (NVRAM needs saving)
+
+	// main RAM writes as the bus takes them (the Kombat Kode player watches
+	// the game's state variable)
+	output reg        ram_wr,        // one clock
+	output reg [17:0] ram_wa,        // word within the 512 KB
+	output reg [15:0] ram_wd,
 
 	// video
 	output            ce_pix,
@@ -866,6 +874,7 @@ always @(posedge clk) begin
 	pic_rd     <= 1'b0;
 	pic_rst    <= 1'b0;
 	pen_add    <= 1'b0;
+	ram_wr     <= 1'b0;
 
 	if (reset) begin
 		mem_ack     <= 1'b0;
@@ -919,6 +928,9 @@ always @(posedge clk) begin
 					end
 					else if (sel_ram) begin
 						pen_add <= pal_ring && sel_ring;
+						ram_wr  <= 1'b1;
+						ram_wa  <= wa[17:0];
+						ram_wd  <= b_wdata;
 						bstate  <= S_RAMWR;
 					end
 					else begin

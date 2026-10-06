@@ -52,6 +52,7 @@ the original board.
 - Up to four players (Open Ice, NBA Hangtime) or three (Rampage)
 - Pause (button or OSD), service mode switch; Service Credit and Tilt in the OSD
 - Hidden menus opened from the OSD, and cut content restored (below)
+- Kombat Kodes for MK3 and UMK3 entered from the OSD (below)
 
 ## Hidden menus and cut content
 
@@ -82,6 +83,62 @@ you; the menu then works with the normal controls.
   follows, P1 Turbo x2, P2 Shoot x3, P2 Pass x2, P1 Shoot, P1 Pass, P2
   Turbo x2, P1 Turbo x4). A button turns the page; after the last page the
   game restarts.
+
+## Kombat Kodes
+
+Mortal Kombat 3 and Ultimate MK3 take Kombat Kodes on the VS screen before
+a two-player fight: each player steps three icons with Low Punch, Block and
+Low Kick, and the six digits (player 1's three, then player 2's) switch
+something on for the fight. The OSD page "Kombat Kodes" enters them for
+you. Pick a kode at any time in a two-player game; a message says it is
+waiting, and at the next VS screen the core presses the buttons as the two
+players would. The game then shows the kode's message under the fighters.
+A kode picked when the VS screen is nearly over waits for the next one.
+With "Pause when OSD is open" on (the default), the game waits while you
+choose, so you can also open the OSD once the VS screen is up.
+
+Every kode on the page comes from the game's own kode table, the same in
+all arcade revisions. Kodes listed for the home versions (239-494,
+978-243, 972-279, 432-234) are not in the arcade games. On MK3 the page
+shows only MK3's kodes.
+
+| Kode | Message / effect | Game |
+|---|---|---|
+| 100-100 | Throwing disabled | both |
+| 020-020 | Blocking disabled | both |
+| 987-123 | No powerbars | both |
+| 466-466 | Unlimited run | both |
+| 688-422 | Dark Kombat | both |
+| 460-460 | Randper Kombat (fighters morph at random; UMK3 also takes 444-444) | both |
+| 985-125 | Psycho Kombat: Dark and Randper Kombat, flickering powerbars, unlimited run, no blocking, fast uppercut recovery | both |
+| 033-000 / 000-033 | Player 1 / player 2 half power | both |
+| 707-000 / 000-707 | Player 1 / player 2 quarter power | both |
+| 044-440 | "Unikoriv Referri: Sans Power": both players start with a sliver of energy | UMK3 |
+| 788-322 | Fast uppercut recovery | UMK3 |
+| 010-010 | Throwing encouraged | UMK3 |
+| 300-300 | Silent Kombat (no music) | UMK3 |
+| 227-227 | Explosive Kombat (2 on 2 mode only) | UMK3 |
+| 022-220 | Explosive Kombat with throwing disabled (2 on 2 mode only) | UMK3 |
+| 642-468 | "You are entering the Land of Rellim": the hidden Galaga-style game | both |
+| 969-141 / 033-564 / 769-342 / 205-205 | The winner of the round battles Motaro / Shao Kahn / Noob Saibot / Smoke | both |
+| 880-088 ... 050-050 | Kombat Zone: the fight's stage (16 stages, listed on the page) | UMK3 |
+| 987-666, 282-282, 123-926 | Messages: "Hold flippers during casino run", "No Fear = EB button, skydive, max countdown", "There is no knowledge that is not power" | both |
+| 999-999 | The game's revision | UMK3 |
+| 550-550, 717-313, 448-844, 122-221, 004-400 | More messages: "See the Mortal Kombat live tour !!", "Rain can be found in the Graveyard", and three signed by the team | UMK3 |
+
+**Ultimate Kombat Kodes** (Ultimate MK3). At game over, while Mileena,
+Ermac or Classic Sub-Zero is still locked, the game asks for an Ultimate
+Kombat Kode: ten icons, each player stepping five with High Punch, Low
+Punch, Block, Low Kick and High Kick. Pick one on the page before the game
+ends and the core enters it on that screen; the game unlocks the character
+and keeps it in its CMOS (use OSD "Save Settings" to keep it on the SD
+card).
+
+| Kode | Unlocks |
+|---|---|
+| 22264-22264 | Mileena |
+| 12344-44321 | Ermac |
+| 81835-81835 | Classic Sub-Zero |
 
 ## Controls
 

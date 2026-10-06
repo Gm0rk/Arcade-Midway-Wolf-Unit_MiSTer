@@ -26,7 +26,9 @@
 #  ROM index 1 carries the core's game configuration: the game id, then for
 #  each of the 8 graphics slots its packed index (FF: empty), FF, then where
 #  the patched program copy starts (8 KB units, 2 bytes little endian; 0:
-#  none).
+#  none), then the main RAM word of the game's state variable for the
+#  Kombat Kode player (MK3, UMK3: tools/kombat_kodes.py; 2 bytes little
+#  endian; 0: none).
 #
 #  md5: the value Main_MiSTer computes while assembling the ROM - every part
 #  in MRA order (each repeat counted), before interleaving. A wrong md5 makes
@@ -57,6 +59,7 @@ from datetime import date
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cut_content  # noqa: E402
+import kombat_kodes  # noqa: E402
 
 # ----------------------------------------------------------------------------
 # Core configuration
@@ -518,6 +521,15 @@ def add_cut_content(entries, slotmap, family, files):
     return base
 
 
+def kode_state(entries, family, files):
+    """Config bytes 12-13: the state variable the Kombat Kode player
+    watches (0: the set has no kodes). Needs the ROM files."""
+    img, _ = assemble(entries, files)
+    if img is None:
+        return 0
+    return kombat_kodes.config(family, bytes(img[PROG_BASE:PROG_BASE + PROG_SIZE]))
+
+
 def assemble(entries, files):
     """The ROM image and md5 exactly as Main_MiSTer builds them (or None, md5
     of what could be read, when a file is missing)."""
@@ -685,7 +697,7 @@ def entry_xml(e):
     raise ValueError(e)
 
 
-def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt=0):
+def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt=0, kst=0):
     names, pad, players = LAYOUTS[family if family != "umk3" else "mk3"]
     lines = ["<misterromdescription>"]
     lines.append(f"\t<name>{xml_escape(game.title)}</name>")
@@ -713,7 +725,7 @@ def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default
     if alt:
         lines.append(f"0x{alt:07X} program ROM again with the cut-content patches (OSD)")
     lines.append("\t</romstruct>")
-    cfg = [GAME_IDS[family]] + slotmap + [0xFF, (alt >> 13) & 0xFF, alt >> 21]
+    cfg = [GAME_IDS[family]] + slotmap + [0xFF, (alt >> 13) & 0xFF, alt >> 21, kst & 0xFF, kst >> 8]
     lines.append('\t<rom index="1">')
     lines.append("\t\t<part>" + " ".join(f"{b:02X}" for b in cfg) + "</part>")
     lines.append("\t</rom>")
@@ -772,6 +784,7 @@ def main():
         rs = romsets[g.name]
         entries, slotmap = rom_layout(rs)
         alt = add_cut_content(entries, slotmap, family, md5files)
+        kst = kode_state(entries, family, md5files)
         md5 = md5_of(entries, md5files)
         if md5 is None:
             print(f"{g.name}: ROM files missing, skipped")
@@ -790,7 +803,7 @@ def main():
                 head = by_name["nbamht"]
             path = os.path.join(args.out, "_alternatives", folder_name(head.title),
                                 file_name(g.title) + ".mra")
-        write_mra(path, g, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt)
+        write_mra(path, g, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt, kst)
 
         status = "written"
         if files:
@@ -813,6 +826,7 @@ def main():
         print(f"{g.name:12s} {GAME_IDS[family]} slots "
               + "".join("-" if x == 0xFF else str(x) for x in slotmap)
               + (f" cut {alt:#x}" if alt else "")
+              + (f" kodes {kst:#x}" if kst else "")
               + f" {md5} {status}  {os.path.relpath(path, args.out)}")
     sys.exit(1 if failures else 0)
 

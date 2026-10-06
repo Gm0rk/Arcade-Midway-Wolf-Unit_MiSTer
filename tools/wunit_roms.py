@@ -6,8 +6,10 @@
 #  index 0, assembled by the same code mra_gen.py uses) and writes:
 #    <out>/<set>.rom   the ROM image (SDRAM from address 0)
 #    <out>/<set>.cfg   one "key value" per line: game id, the 8 graphics slot
-#                      bytes, the DIP switch default, the year, I/O remap, and
+#                      bytes, the DIP switch default, the year, I/O remap,
 #                      where the patched program copy starts (alt, 0: none)
+#                      and the Kombat Kode player's state variable
+#                      (kode_state, a main RAM word; 0: none)
 #
 #  Usage: wunit_roms.py --mame MAME_SRC --roms ROMDIR --out DIR set [set...]
 #
@@ -43,6 +45,7 @@ def main():
         family = g.name if g.parent == "0" else g.parent
         entries, slotmap = mra_gen.rom_layout(romsets[name])
         alt = mra_gen.add_cut_content(entries, slotmap, family, files)
+        kst = mra_gen.kode_state(entries, family, files)
         img, md5 = mra_gen.assemble(entries, files)
         if img is None:
             raise SystemExit(f"{name}: ROM files missing")
@@ -56,6 +59,7 @@ def main():
             f.write(f"year {YEARS[family]}\n")
             f.write(f"io_remap {1 if family == 'wwfmania' else 0}\n")
             f.write(f"alt {alt:x}\n")
+            f.write(f"kode_state {kst:x}\n")
             f.write(f"md5 {md5}\n")
         print(f"{name}: {len(img):#x} bytes, md5 {md5}")
 
