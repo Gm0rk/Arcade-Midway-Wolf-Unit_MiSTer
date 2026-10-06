@@ -35,3 +35,16 @@ python3 tools/frame_compare.py --scan out/umk3 ref/umk3
 Frame numbers line up with MAME's frame notifier (simulator frame n = MAME
 frame n). `altsyncram.sv` is a behavioural model of the one megafunction the
 core instantiates.
+
+When a picture goes wrong in the simulator but not in MAME:
+
+- `-buslog FILE A B` logs the CPU's palette, blitter register, sound latch
+  and UMK3 palette-ring writes in frames A-B, each with the time into the
+  frame and the PC, plus the blitter's interrupt (with the CPU's cycle debt)
+  and the moment it has drawn; `tools/lua/bus_log.lua` writes the same from
+  MAME
+- `-pctrace FILE -pcframes A B` lists the PC of every instruction (and
+  interrupt) retired in frames A-B; MAME's debugger gives the matching list
+  (`-debug -debugger none`, `trace FILE,maincpu` from a Lua frame notifier)
+- `-nopalring` leaves out the UMK3 palette-ring penalty, to compare with a
+  MAME run under `WU_NO_UMK3_HACK`
