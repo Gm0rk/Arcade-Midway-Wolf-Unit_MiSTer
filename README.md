@@ -51,6 +51,37 @@ the original board.
 - DIP switches in the OSD, taken from MAME
 - Up to four players (Open Ice, NBA Hangtime) or three (Rampage)
 - Pause (button or OSD), service mode switch; Service Credit and Tilt in the OSD
+- Hidden menus opened from the OSD, and cut content restored (below)
+
+## Hidden menus and cut content
+
+Some games hide menus behind button codes. The OSD can enter the code for
+you; the menu then works with the normal controls.
+
+- **EJB Menu** (Mortal Kombat 3, Ultimate MK3, every revision): the
+  developers' test menu. OSD "Open EJB Menu" while the game is in attract
+  mode (by hand: P1 Block x5, P2 Block x10, P1 Block x3, P2 Block x1, P1
+  Block x2, P2 Block x2, P1 Block x3, P2 Block x3). It adds extra audits,
+  the full credits, the "Penacho/Miller" Galaga-style game and, in MK3,
+  Character Endings and Smoke on/off; in UMK3, the hidden characters
+  (Mileena, Ermac, Classic Sub-Zero) on/off and a fatality demonstration.
+  MK3 revisions 1.0 and p4.0 have an unfinished "Hello" screen in place of
+  the credits.
+- **EJB Character Endings** (Ultimate MK3, OSD option): UMK3 dropped MK3's
+  Character Endings item from its EJB menu, but the item and its submenu
+  (Kano to Smoke) are still in the ROM, and the endings' stories are the
+  game's own. With the option on, the EJB menu has the item back and each
+  ending shows its story before the cast roll. The core runs a patched
+  copy of the program ROM that the MRA loads next to the original;
+  changing the option restarts the game.
+- **Secret Midway Menu** (NBA Hangtime, NBA Maximum Hangtime, every
+  revision): statistics pages meant for Midway's staff (dunks, play time,
+  game averages, team picks, the stored initials with their PINs). OSD
+  "Open Secret Midway Menu", best in attract mode (by hand: both players
+  hold Up and all three buttons, then Down; on the design team screen that
+  follows, P1 Turbo x2, P2 Shoot x3, P2 Pass x2, P1 Shoot, P1 Pass, P2
+  Turbo x2, P1 Turbo x4). A button turns the page; after the last page the
+  game restarts.
 
 ## Controls
 
