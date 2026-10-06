@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>NBA Hangtime (ver M1.3 10/10/96)</name>
-	<mratimestamp>20261005</mratimestamp>
+	<mratimestamp>20261006</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>nbahangtm13</setname>
 	<year>1996</year>
@@ -26,7 +26,7 @@
 0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 -- 5 -- --)
 	</romstruct>
 	<rom index="1">
-		<part>04 00 01 02 03 FF 04 FF FF FF</part>
+		<part>04 00 01 02 03 FF 04 FF FF FF 00 00</part>
 	</rom>
 	<rom index="0" zip="nbahangtm13.zip|nbahangt.zip" md5="9445db7d4240e0fa52f79453d1725b06" type="merged">
 		<!-- program ROM -->
