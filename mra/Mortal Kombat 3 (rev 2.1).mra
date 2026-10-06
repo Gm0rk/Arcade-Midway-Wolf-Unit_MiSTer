@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Mortal Kombat 3 (rev 2.1)</name>
-	<mratimestamp>20261005</mratimestamp>
+	<mratimestamp>20261006</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>mk3</setname>
 	<year>1994</year>
@@ -27,7 +27,7 @@
 0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 4 -- -- --)
 	</romstruct>
 	<rom index="1">
-		<part>00 00 01 02 03 04 FF FF FF FF</part>
+		<part>00 00 01 02 03 04 FF FF FF FF 00 00</part>
 	</rom>
 	<rom index="0" zip="mk3.zip" md5="f46482dbdb7cc0c2c5ce9068fa88917e">
 		<!-- program ROM -->
