@@ -4,6 +4,18 @@ An FPGA implementation of the Midway Wolf Unit arcade board (1994-1997), the
 TMS34010-based platform behind Mortal Kombat 3, Ultimate Mortal Kombat 3, WWF
 WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 
+## Contents
+
+- [Hardware](#hardware)
+- [Games](#games)
+- [Features](#features)
+- [Hidden menus and cut content](#hidden-menus-and-cut-content)
+- [Kombat Kodes](#kombat-kodes)
+- [Controls](#controls)
+- [ROMs](#roms)
+- [Credits and references](#credits-and-references)
+- [License](#license)
+
 ## Hardware
 
 | | |
