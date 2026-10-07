@@ -14,8 +14,8 @@
 //    DDR3   the 1 MB frame store (VRAM)
 //    BRAM   CMOS, palette, caches and line buffers
 //
-//  Sound: the DCS board (ADSP-2105) is not in this build yet. dcs_stub.sv
-//  answers the 34010 through the same latches so the games run, silently.
+//  Sound: the DCS board (rtl/dcs_audio.sv: an ADSP-2105 at 10 MHz, its
+//  sound ROMs in SDRAM, 16-bit mono at 31250 Hz).
 //
 //  This program is free software; you can redistribute it and/or modify it
 //  under the terms of the GNU General Public License as published by the Free
@@ -274,28 +274,21 @@ reg  [11:0] cfg_year;            // the game's year (security PIC date)
 reg         cfg_io_remap;        // WWF: I/O order chosen by the game
 reg         cfg_pal_ring;        // UMK3: MAME's palette-ring penalty
 reg   [1:0] cfg_layout;
-reg   [7:0] cfg_dcs_ver;         // DCS ROM version byte (sound placeholder)
-reg  [19:0] cfg_dcs_dly;         // and the time it took MAME's DCS to send it
 
 localparam L_MK = 2'd0, L_WWF = 2'd1, L_4P = 2'd2, L_3P = 2'd3;
 
-// DCS version replies and delays from MAME traces (tools/lua/ref_trace.lua)
 always @(posedge clk_sys) begin
 	cfg_year     <= 12'd1994;
 	cfg_io_remap <= 1'b0;
 	cfg_pal_ring <= 1'b0;
 	cfg_layout   <= L_MK;
-	cfg_dcs_ver  <= 8'h01;
-	cfg_dcs_dly  <= 20'd584_560;     // 6.09 ms
 	case (game_id)
 		G_MK3:      ;
-		G_UMK3:     begin cfg_dcs_ver <= 8'h02; cfg_dcs_dly <= 20'd587_480; cfg_pal_ring <= 1'b1; end
-		G_WWF:      begin cfg_year <= 12'd1995; cfg_io_remap <= 1'b1; cfg_layout <= L_WWF;
-		                  cfg_dcs_dly <= 20'd33_690; end
-		G_OPENICE:  begin cfg_year <= 12'd1995; cfg_layout <= L_4P;
-		                  cfg_dcs_ver <= 8'h12; cfg_dcs_dly <= 20'd584_090; end
-		G_NBAHANGT: begin cfg_year <= 12'd1996; cfg_layout <= L_4P; cfg_dcs_dly <= 20'd27_600; end
-		G_RMPGWT:   begin cfg_year <= 12'd1997; cfg_layout <= L_3P; cfg_dcs_dly <= 20'd586_860; end
+		G_UMK3:     cfg_pal_ring <= 1'b1;
+		G_WWF:      begin cfg_year <= 12'd1995; cfg_io_remap <= 1'b1; cfg_layout <= L_WWF; end
+		G_OPENICE:  begin cfg_year <= 12'd1995; cfg_layout <= L_4P; end
+		G_NBAHANGT: begin cfg_year <= 12'd1996; cfg_layout <= L_4P; end
+		G_RMPGWT:   begin cfg_year <= 12'd1997; cfg_layout <= L_3P; end
 		default: ;
 	endcase
 end
@@ -736,29 +729,42 @@ midway_wunit board
 assign DDRAM_CLK = clk_sys;
 
 //////////////////////////////////////////////////////////////////
-// Sound board (placeholder until the DCS board is in)
+// Sound board: DCS (mono, signed 16-bit to both channels)
 //////////////////////////////////////////////////////////////////
 
-dcs_stub sound
+wire [15:0] snd_sample;
+
+dcs_audio sound
 (
-	.clk       (clk_sys),
-	.reset     (reset),
-	.dcs_reset (snd_reset),
+	.clk           (clk_sys),
+	.reset         (reset),
+	.dcs_reset     (snd_reset),
 
-	.dcs_version (cfg_dcs_ver),
-	.dcs_delay   (cfg_dcs_dly),
+	.host_wr       (snd_wr),
+	.host_data     (snd_wdata),
+	.host_rd       (snd_rd),
+	.host_q        (snd_rdata),
+	.control       (snd_ctrl),
 
-	.host_wr   (snd_wr),
-	.host_data (snd_wdata),
-	.host_rd   (snd_rd),
-	.host_q    (snd_rdata),
-	.control   (snd_ctrl)
+	.rom_addr      (snd_sd_addr),
+	.rom_req       (snd_sd_req),
+	.rom_ack       (snd_sd_ack),
+	.rom_data      (snd_sd_data),
+
+	.sample        (snd_sample),
+	.sample_strobe (),
+
+	.dbg_pc        (),
+	.dbg_op        (),
+	.dbg_retire    (),
+	.dbg_irq       (),
+	.dbg_wr        (),
+	.dbg_waddr     (),
+	.dbg_wdata     ()
 );
 
-assign snd_sd_req = snd_sd_ack;        // no sound ROM reads yet
-
-assign AUDIO_L   = 16'd0;
-assign AUDIO_R   = 16'd0;
+assign AUDIO_L   = snd_sample;
+assign AUDIO_R   = snd_sample;
 assign AUDIO_S   = 1'b1;
 assign AUDIO_MIX = 2'd0;
 
@@ -785,7 +791,7 @@ sdram sdram
 	.SDRAM_CKE   (SDRAM_CKE),
 	.SDRAM_CLK   (SDRAM_CLK),
 
-	.ch0_addr    (22'd0),
+	.ch0_addr    (snd_sd_addr),
 	.ch0_req     (snd_sd_req),
 	.ch0_ack     (snd_sd_ack),
 	.ch0_dout    (snd_sd_data),

@@ -9,7 +9,8 @@ set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_pic.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_macro.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/wunit_kodes.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/midway_wunit.sv
-set_global_assignment -name SYSTEMVERILOG_FILE rtl/dcs_stub.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/adsp2105/adsp2105.sv
+set_global_assignment -name SYSTEMVERILOG_FILE rtl/dcs_audio.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/sdram.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/crt_adjust/crt_adjust.sv
 set_global_assignment -name SYSTEMVERILOG_FILE rtl/video/sync_center.sv

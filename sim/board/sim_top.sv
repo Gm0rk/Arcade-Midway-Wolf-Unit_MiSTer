@@ -1,8 +1,8 @@
 //============================================================================
 //  sim_top - the Wolf Unit board as the simulator sees it
 //
-//  The board (rtl/midway_wunit.sv), the sound board placeholder and the real
-//  SDRAM controller (rtl/sdram.sv, with its data bus split for simulation).
+//  The board (rtl/midway_wunit.sv), the DCS sound board (rtl/dcs_audio.sv)
+//  and the real SDRAM controller (rtl/sdram.sv, with its data bus split for simulation).
 //  The C++ side (tb_board.cpp) models the SDRAM chip on its pins, the DDR3
 //  bridge on its Avalon port, and captures the video. ROM downloads are
 //  skipped: the C++ side writes the ROM image straight into its SDRAM model.
@@ -32,8 +32,6 @@ module sim_top
 	input      [15:0] kode_state,    // the game's state variable, main RAM word (0: none)
 	output            kode_info_req, // the player's OSD message
 	output      [7:0] kode_info,
-	input       [7:0] dcs_version,
-	input      [19:0] dcs_delay,
 	input      [15:0] in0,
 	input      [15:0] in1,
 	input      [15:0] dsw,
@@ -73,6 +71,10 @@ module sim_top
 	output            vid_hb,
 	output            vid_vb,
 
+	// sound
+	output     [15:0] snd_sample,
+	output            snd_strobe,    // one clock per DAC word
+
 	// debug
 	output     [31:0] dbg_pc,
 	output            dbg_retire,
@@ -87,9 +89,10 @@ module sim_top
 
 wire [24:1] cpu_sd_addr;
 wire [24:3] dma_sd_addr;
-wire        cpu_sd_req, dma_sd_req, snd_sd_ack, sp_sd_ack;
+wire [24:3] snd_sd_addr;
+wire        cpu_sd_req, dma_sd_req, snd_sd_req, snd_sd_ack, sp_sd_ack;
 wire        cpu_sd_ack, dma_sd_ack;
-wire [63:0] cpu_sd_data, dma_sd_data;
+wire [63:0] cpu_sd_data, dma_sd_data, snd_sd_data;
 wire        cpu_sd_we;
 wire [15:0] cpu_sd_din;
 
@@ -219,18 +222,29 @@ assign dbg_wdata = board.mem_wdata;
 assign dbg_dma_irq   = board.dma_irq;
 assign dbg_dma_drawn = (board.dma.bstate == 5'd23);
 
-dcs_stub sound
+dcs_audio sound
 (
-	.clk         (clk),
-	.reset       (reset),
-	.dcs_reset   (snd_reset),
-	.dcs_version (dcs_version),
-	.dcs_delay   (dcs_delay),
-	.host_wr     (snd_wr),
-	.host_data   (snd_wdata),
-	.host_rd     (snd_rd),
-	.host_q      (snd_rdata),
-	.control     (snd_ctrl)
+	.clk           (clk),
+	.reset         (reset),
+	.dcs_reset     (snd_reset),
+	.host_wr       (snd_wr),
+	.host_data     (snd_wdata),
+	.host_rd       (snd_rd),
+	.host_q        (snd_rdata),
+	.control       (snd_ctrl),
+	.rom_addr      (snd_sd_addr),
+	.rom_req       (snd_sd_req),
+	.rom_ack       (snd_sd_ack),
+	.rom_data      (snd_sd_data),
+	.sample        (snd_sample),
+	.sample_strobe (snd_strobe),
+	.dbg_pc        (),
+	.dbg_op        (),
+	.dbg_retire    (),
+	.dbg_irq       (),
+	.dbg_wr        (),
+	.dbg_waddr     (),
+	.dbg_wdata     ()
 );
 
 sdram sdram
@@ -252,10 +266,10 @@ sdram sdram
 	.SDRAM_CKE   (),
 	.SDRAM_CLK   (),
 
-	.ch0_addr    (22'd0),
-	.ch0_req     (snd_sd_ack),
+	.ch0_addr    (snd_sd_addr),
+	.ch0_req     (snd_sd_req),
 	.ch0_ack     (snd_sd_ack),
-	.ch0_dout    (),
+	.ch0_dout    (snd_sd_data),
 
 	.ch1_addr    (cpu_sd_addr),
 	.ch1_req     (cpu_sd_req),

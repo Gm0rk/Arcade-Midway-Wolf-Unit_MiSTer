@@ -1,6 +1,6 @@
 // tb_board.cpp - full Wolf Unit board simulation (Verilator)
 //
-// Runs sim_top (board, sound placeholder, SDRAM controller) with:
+// Runs sim_top (board, DCS sound board, SDRAM controller) with:
 //   - an SDRAM chip model on the controller's pins (CAS latency 3, bursts of
 //     4 reads, single-word writes with DQM byte masks), loaded with the ROM
 //     image tools/wunit_roms.py builds; main RAM (the top 512 KB) starts at 0
@@ -31,6 +31,8 @@
 //                     them); the player's OSD messages are printed
 //     -pctrace FILE   write every retired instruction's PC
 //     -pcframes A B   only in frames A-B (each line: frame, PC)
+//     -wav FILE       the sound board's DAC words as a WAV file (16-bit mono,
+//                     31250 Hz)
 //
 // Frame numbers count the board's vertical blanks from reset; the first
 // complete picture is frame 1.
@@ -208,6 +210,7 @@ int main(int argc, char **argv)
 	int code_frame = -1;
 	int kode_n = -1, kode_frame = -1;
 	bool use_alt = false;
+	FILE *wav = nullptr;
 	FILE *bl = nullptr;
 	int bl_from = 0, bl_to = 0;
 	for (int i = 5; i < argc; i++) {
@@ -224,6 +227,11 @@ int main(int argc, char **argv)
 		}
 		else if (!strcmp(argv[i], "-pctrace")) pct = fopen(argv[++i], "w");
 		else if (!strcmp(argv[i], "-pcframes")) { pc_from = atoi(argv[++i]); pc_to = atoi(argv[++i]); }
+		else if (!strcmp(argv[i], "-wav")) {
+			wav = fopen(argv[++i], "wb");
+			if (!wav) { perror(argv[i]); return 1; }
+			fwrite(std::string(44, '\0').data(), 1, 44, wav);    // header at the end
+		}
 		else if (!strcmp(argv[i], "-press")) {
 			Press p; char port[8];
 			sscanf(argv[++i], "%d:%7[^:]:%hx:%d", &p.frame, port, &p.mask, &p.len);
@@ -260,8 +268,6 @@ int main(int argc, char **argv)
 		for (int i = 0; i < 8; i++) slots |= (uint64_t)s[i] << (8 * i);
 	}
 	int game = atoi(cfg["game"].c_str());
-	static const int dcs_ver[6] = {0x01, 0x02, 0x01, 0x12, 0x01, 0x01};
-	static const int dcs_dly[6] = {584560, 587480, 33690, 584090, 27600, 586860};
 	top->gfx_slots = slots;
 	top->year = atoi(cfg["year"].c_str());
 	top->io_remap = atoi(cfg["io_remap"].c_str());
@@ -274,8 +280,6 @@ int main(int argc, char **argv)
 	top->kode_sel = 0;
 	top->kode_idx = kode_n >= 0 ? kode_n : 0;
 	top->kode_state = strtoul(cfg["kode_state"].c_str(), nullptr, 16);
-	top->dcs_version = dcs_ver[game];
-	top->dcs_delay = dcs_dly[game];
 	top->dsw = dsw_override >= 0 ? dsw_override : strtol(cfg["dsw"].c_str(), nullptr, 16);
 	apply_inputs();
 
@@ -307,6 +311,10 @@ int main(int argc, char **argv)
 		top->clk = 1; top->eval();
 		sdram_after_edge();
 		if (ce) video_sample();
+		if (wav && top->snd_strobe) {
+			uint8_t w[2] = { (uint8_t)top->snd_sample, (uint8_t)(top->snd_sample >> 8) };
+			fwrite(w, 1, 2, wav);
+		}
 		if (top->kode_info_req)
 			fprintf(stderr, "frame %d: OSD info %d: %s\n", frame_no, top->kode_info,
 			        top->kode_info < 4 ? kode_msg[top->kode_info] : "?");
@@ -338,6 +346,17 @@ int main(int argc, char **argv)
 	}
 	if (pct) fclose(pct);
 	if (bl) fclose(bl);
+	if (wav) {
+		// RIFF header: PCM, mono, 31250 Hz, 16 bits
+		uint32_t data = ftell(wav) - 44;
+		auto u32 = [&](uint32_t v) { fputc(v, wav); fputc(v >> 8, wav); fputc(v >> 16, wav); fputc(v >> 24, wav); };
+		auto u16 = [&](uint16_t v) { fputc(v, wav); fputc(v >> 8, wav); };
+		fseek(wav, 0, SEEK_SET);
+		fputs("RIFF", wav); u32(36 + data); fputs("WAVEfmt ", wav);
+		u32(16); u16(1); u16(1); u32(31250); u32(62500); u16(2); u16(16);
+		fputs("data", wav); u32(data);
+		fclose(wav);
+	}
 	delete top;
 	return 0;
 }

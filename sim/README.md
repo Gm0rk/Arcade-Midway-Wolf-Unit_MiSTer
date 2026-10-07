@@ -1,6 +1,6 @@
 # Simulation
 
-Verilator 5. Neither folder is part of the core's file list.
+Verilator 5. None of these folders is part of the core's file list.
 
 ## `dma/` - blitter against MAME's code
 
@@ -19,7 +19,7 @@ make && ./obj_dir/Vwunit_dma 3000 1              # tests, seed
 
 ## `board/` - the whole board
 
-`sim_top.sv` is the board, the sound board placeholder and the real SDRAM
+`sim_top.sv` is the board, the DCS sound board and the real SDRAM
 controller; `tb_board.cpp` adds an SDRAM chip model on the controller's
 pins, a DDR3 bridge model and video capture. Frames come out as MAME's
 `screen:pixels()` does, so `tools/frame_compare.py` compares them directly.
@@ -59,3 +59,41 @@ through the state variable in the .cfg (`kode_state`) and the run prints its
 OSD messages. The kode screens need a game in progress, so give the presses
 too: MAME's frame numbers carry over (a fresh CMOS wants a button at frame
 400, then coins, starts and the fighters, e.g. `-press 1300:in2:0001:5`).
+
+`-wav FILE` writes the sound board's DAC words (16-bit mono, 31250 Hz).
+`tools/dcs_trace.py dac` compares them with MAME's (`tools/lua/dcs_trace.lua`
+with `DCS_DAC`, same presses): the streams agree word for word as long as
+the 34010 sends its sound commands in the same half buffer as MAME's.
+
+## `dcs/` - the sound board against MAME's DSP
+
+`tb_dcs.cpp` runs the DCS board (`rtl/dcs_audio.sv`, `rtl/adsp2105`) on its
+own: the sound ROMs from the set's ROM image behind a fixed-latency channel
+0, and the host side (latch writes, resets) played back from MAME, each at
+the same instruction as there. `run_ref.sh` makes MAME trace the DSP from
+power-on (`tools/lua/dcs_trace.lua`: every instruction with the registers
+before it), drops the main loop's waits for the DAC buffer on the way (they
+are most of the trace; the simulator drops them the same way, `-raw` keeps
+them on both sides for short runs) and writes the events. `tools/dcs_trace.py
+compare` then checks the simulator's trace instruction by instruction, every
+register included, `dac` the DAC words.
+
+`-host FILE` plays the host side by time instead, from a MAME run without
+the trace (`dcs_trace.lua` with only `DCS_HOST` and `DCS_DAC`, full speed):
+the way to check minutes of game sound. Commands then reach the DSP at
+nearly, not exactly, MAME's instruction, so one that lands on the edge of
+the main loop's check can be taken a half buffer apart.
+
+```
+sim/dcs/run_ref.sh wtunit ROMDIR mk3 ref/dcs 560 500 400:IN0:0010:5,500:IN2:0001:5
+make -C sim/dcs
+sim/dcs/obj_dir/Vdcs_audio simroms/mk3.rom ref/dcs/events.txt out/dcs.txt -samples out/dac.txt
+python3 tools/dcs_trace.py compare ref/dcs/ref.txt out/dcs.txt
+python3 tools/dcs_trace.py dac ref/dcs/dac.txt out/dac.txt
+```
+
+`run_ref.sh` arguments: end frame, the frame from which MAME logs every
+register (before it only the latch, about five times faster; the PCs are
+compared all the way), presses as `WU_PRESS`. MAME traces about 250,000
+instructions a second (50,000 with the registers), so an emulated second of
+the 10 MHz DSP takes a minute or more.

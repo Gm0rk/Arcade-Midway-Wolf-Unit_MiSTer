@@ -5,7 +5,7 @@ RTL  = ../../rtl
 SRCS = $(RTL)/tms34010/tms34010_pkg.sv $(RTL)/tms34010/tms34010_muldiv.sv \
        $(RTL)/tms34010/tms34010_gfx.sv $(RTL)/tms34010/tms34010.sv \
        $(RTL)/wunit_dma.sv $(RTL)/wunit_vram.sv $(RTL)/wunit_video.sv $(RTL)/wunit_pic.sv $(RTL)/wunit_macro.sv $(RTL)/wunit_kodes.sv \
-       $(RTL)/midway_wunit.sv $(RTL)/dcs_stub.sv $(RTL)/sdram.sv ../altsyncram.sv sim_top.sv
+       $(RTL)/midway_wunit.sv $(RTL)/adsp2105/adsp2105.sv $(RTL)/dcs_audio.sv $(RTL)/sdram.sv ../altsyncram.sv sim_top.sv
 
 obj_dir/Vsim_top: tb_board.cpp $(SRCS)
 	verilator --cc --exe --build -O3 --x-assign fast --x-initial fast --noassert \

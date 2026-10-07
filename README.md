@@ -21,18 +21,15 @@ WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 
 | Game | MRA set | Status |
 |---|---|---|
-| Mortal Kombat 3 | mk3 (rev 2.1) + rev 2.0, 1.0, p4.0 | Awaiting hardware test, no sound yet |
-| Ultimate Mortal Kombat 3 | umk3 (rev 1.2) + rev 1.1, 1.0 | Awaiting hardware test, no sound yet |
-| WWF WrestleMania | wwfmania (rev 1.30) + rev 1.20, 1.1, proto 2.01 | Awaiting hardware test, no sound yet |
-| 2 On 2 Open Ice Challenge | openice (rev 1.21) + rev 1.2A | Awaiting hardware test, no sound yet |
-| NBA Hangtime | nbahangt (L1.3) + M1.3, L1.2, M1.2, L1.1, M1.1 | Awaiting hardware test, no sound yet |
-| NBA Maximum Hangtime | nbamht (L1.03) + L1.0, M1.0, L0.9 | Awaiting hardware test, no sound yet |
-| Rampage World Tour | rmpgwt (rev 1.3) + rev 1.1 | Awaiting hardware test, no sound yet |
+| Mortal Kombat 3 | mk3 (rev 2.1) + rev 2.0, 1.0, p4.0 | Awaiting hardware test |
+| Ultimate Mortal Kombat 3 | umk3 (rev 1.2) + rev 1.1, 1.0 | Awaiting hardware test |
+| WWF WrestleMania | wwfmania (rev 1.30) + rev 1.20, 1.1, proto 2.01 | Awaiting hardware test |
+| 2 On 2 Open Ice Challenge | openice (rev 1.21) + rev 1.2A | Awaiting hardware test |
+| NBA Hangtime | nbahangt (L1.3) + M1.3, L1.2, M1.2, L1.1, M1.1 | Awaiting hardware test |
+| NBA Maximum Hangtime | nbamht (L1.03) + L1.0, M1.0, L0.9 | Awaiting hardware test |
+| Rampage World Tour | rmpgwt (rev 1.3) + rev 1.1 | Awaiting hardware test |
 
 Verified on hardware: `[░░░░░░░░░░░░░░░░░░░░]` 0 / 7
-
-The DCS sound board is not in the core yet, so every game is silent; the
-games still see a sound board that answers them and run normally.
 
 The security chip is the development PIC every Wolf game accepts besides
 its own, so the serial number on the boot screen is not the one printed on
@@ -40,12 +37,15 @@ the original board.
 
 ## Features
 
+- DCS sound: the ADSP-2105 runs each game's own sound program from its
+  sound ROMs, 16-bit mono at 31.25 kHz
 - Analog sync centred on a standard 15 kHz screen; CRT Adjust (H-Size,
   H-Position, V-Shift) and CRT Auto-Width for analog CRT output
 - Video Timing in the OSD: the board's own 54.7 Hz, or 57 Hz / 60 Hz frames
   for TVs that do not hold 54.7 Hz. Only blank lines are dropped, so the
   whole picture is still sent; games run about 4 % (57 Hz) or 10 % (60 Hz)
-  faster
+  faster (the sound board keeps its own clock: music plays at its normal
+  pitch and tempo)
 - CMOS saved as NVRAM: settings, audits and high scores survive power-off
   (OSD "Save Settings")
 - DIP switches in the OSD, taken from MAME
