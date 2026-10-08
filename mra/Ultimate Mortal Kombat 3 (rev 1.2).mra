@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Ultimate Mortal Kombat 3 (rev 1.2)</name>
-	<mratimestamp>20261006</mratimestamp>
+	<mratimestamp>20261007</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>umk3</setname>
 	<year>1994</year>
@@ -28,7 +28,7 @@
 0x1902000 program ROM again with the cut-content patches (OSD)
 	</romstruct>
 	<rom index="1">
-		<part>01 00 01 02 03 FF 04 FF FF FF 81 0C 96 60</part>
+		<part>01 00 01 02 03 FF 04 FF FF FF 81 0C 96 60 01 00</part>
 	</rom>
 	<rom index="0" zip="umk3.zip" md5="a29c1e521b7037a954ff4795ac8c2f56">
 		<!-- program ROM -->

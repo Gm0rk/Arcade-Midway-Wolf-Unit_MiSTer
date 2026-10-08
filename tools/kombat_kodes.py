@@ -12,7 +12,8 @@
 #  0x10601E0).
 #
 #  The kodes themselves are fixed in the core. This script checks them:
-#    - the OSD page (Arcade-Midway-Wolf-Unit.sv, status bits 18-67) and the
+#    - the OSD pages (Arcade-Midway-Wolf-Unit.sv: "Kombat Kodes" links to
+#      five category pages P4-P8; status bits 18-67 in order) and the
 #      player's table (rtl/wunit_kodes.sv) list the same digits in the same
 #      order, and the UMK3-only lines (H6) are the ones MK3 lacks
 #    - every VS screen kode the core offers for the game is in the game's
@@ -122,7 +123,7 @@ def core_kodes():
     page, checked against the player's table."""
     top = open(TOP, encoding="utf-8").read()
     osd = []
-    for m in re.finditer(r'"(H6)?P3R\[(\d+)\],([^;]*?) (\d{3}-\d{3}|\d{5}-\d{5});"', top):
+    for m in re.finditer(r'"(H6)?P[4-8]R\[(\d+)\],([^;]*?) (\d{3}-\d{3}|\d{5}-\d{5});"', top):
         osd.append((int(m.group(2)) - FIRST_BIT, bool(m.group(1)), m.group(3), m.group(4).replace("-", "")))
     table = {}
     for m in re.finditer(r"6'd(\d+):\s+kode = (vs|ukk)\((?:24|40)'h([0-9_]+)\)", open(PLAYER, encoding="utf-8").read()):

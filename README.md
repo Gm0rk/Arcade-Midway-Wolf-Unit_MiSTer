@@ -4,18 +4,6 @@ An FPGA implementation of the Midway Wolf Unit arcade board (1994-1997), the
 TMS34010-based platform behind Mortal Kombat 3, Ultimate Mortal Kombat 3, WWF
 WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 
-## Contents
-
-- [Hardware](#hardware)
-- [Games](#games)
-- [Features](#features)
-- [Hidden menus and cut content](#hidden-menus-and-cut-content)
-- [Kombat Kodes](#kombat-kodes)
-- [Controls](#controls)
-- [ROMs](#roms)
-- [Credits and references](#credits-and-references)
-- [License](#license)
-
 ## Hardware
 
 | | |
@@ -65,6 +53,7 @@ the original board.
 - Pause (button or OSD), service mode switch; Service Credit and Tilt in the OSD
 - Hidden menus opened from the OSD, and cut content restored (below)
 - Kombat Kodes for MK3 and UMK3 entered from the OSD (below)
+- Finishing moves for MK3 and UMK3 entered from the OSD (below)
 
 ## Hidden menus and cut content
 
@@ -102,7 +91,9 @@ Mortal Kombat 3 and Ultimate MK3 take Kombat Kodes on the VS screen before
 a two-player fight: each player steps three icons with Low Punch, Block and
 Low Kick, and the six digits (player 1's three, then player 2's) switch
 something on for the fight. The OSD page "Kombat Kodes" enters them for
-you. Pick a kode at any time in a two-player game; a message says it is
+you, sorted into Fight, Round 1 Winner Battles, Kombat Zone, Messages and
+Ultimate Kombat Kodes (Back from a category returns to the main menu).
+Pick a kode at any time in a two-player game; a message says it is
 waiting, and at the next VS screen the core presses the buttons as the two
 players would. The game then shows the kode's message under the fighters.
 A kode picked when the VS screen is nearly over waits for the next one.
@@ -111,8 +102,11 @@ choose, so you can also open the OSD once the VS screen is up.
 
 Every kode on the page comes from the game's own kode table, the same in
 all arcade revisions. Kodes listed for the home versions (239-494,
-978-243, 972-279, 432-234) are not in the arcade games. On MK3 the page
-shows only MK3's kodes.
+978-243, 972-279, 432-234) are not in the arcade games. On MK3 the pages
+show only MK3's kodes (no Kombat Zone or Ultimate Kombat Kodes).
+
+The core finds these screens through the game's state variable, whose
+address comes with the MRA: use the MRAs of the same release as the core.
 
 | Kode | Message / effect | Game |
 |---|---|---|
@@ -151,6 +145,53 @@ card).
 | 22264-22264 | Mileena |
 | 12344-44321 | Ermac |
 | 81835-81835 | Classic Sub-Zero |
+
+## Finishing Moves
+
+Mortal Kombat 3 and Ultimate MK3: the OSD page "Finishing Moves" enters
+finishing moves for you. Choose the fighter under "Character"; the page
+then lists that fighter's moves (Fatality 1 and 2, Stage Fatality,
+Animality, Friendship, Babality: the ones it has) with where to stand, and
+the Mercy every fighter shares.
+
+At FINISH HIM, stand at the distance the line gives, open the OSD and pick
+the move: the core enters it on the winner's controls, player 1 or 2,
+turned to the side the winner faces. With "Pause when OSD is open" on (the
+default) FINISH HIM waits while you choose. The fighter must be the
+winner's (a message says so if not), and the game's own rules still apply:
+
+- Stage Fatality: on the Subway, The Pit 3, the Bell Tower or (UMK3)
+  Scorpion's Lair
+- Friendship and Babality: only if the winner did not press Block in the
+  last round
+- Mercy: in round 3, when each player has won a round; the loser gets back
+  up with a little energy. An Animality needs a Mercy in the same round
+  first: Mercy, beat the opponent again, then the Animality
+- Kabal's Fatality 1 also needs room behind the opponent (not at the edge
+  of the screen)
+
+Distances (between the fighters, the screen is 400 pixels wide):
+
+| Word | Where the winner stands |
+|---|---|
+| Close | next to the opponent (under about 90 pixels) |
+| Sweep | where a sweep reaches (about 90-130) |
+| Outside sweep | just out of sweep reach (about 130-165) |
+| Half screen | about a jump away (about 165-260) |
+| Full screen | farther |
+
+Two words joined by a dash are a range from the first to the second
+(Close-sweep: close or at sweep distance; Sweep-half: anywhere from sweep
+to half screen). Not close is sweep distance or farther, Past sweep is
+outside sweep or farther, Half or full is half screen or farther, and
+Anywhere is any distance.
+
+The moves come from each game's own move tables. UMK3 (every revision) and
+MK3 revisions 2.0 and 2.1 have the same; MK3 1.0 and the p4.0 chip set
+have older ones: other fatalities, the same Stage Fatality for everybody,
+a Babality for Kano only, no Friendships (the game has them switched off),
+and a Mercy that also works from sweep distance. Use the MRAs of the same
+release as the core: they tell it which moves the set has.
 
 ## Controls
 

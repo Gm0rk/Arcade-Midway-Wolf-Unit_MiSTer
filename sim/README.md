@@ -97,3 +97,27 @@ register (before it only the latch, about five times faster; the PCs are
 compared all the way), presses as `WU_PRESS`. MAME traces about 250,000
 instructions a second (50,000 with the registers), so an emulated second of
 the 10 MHz DSP takes a minute or more.
+
+## `finish/` - the finishing move player
+
+`tb_finish.cpp` runs `rtl/wunit_finish.sv` on its own: it writes a FINISH
+HIM into the player through main RAM writes as the game makes them (state
+variable, the player blocks, the fighters' objects and X positions, the
+FINISH HIM state), picks a move and prints what the player then holds on
+IN0 / IN1, one line a frame, and its OSD messages. `tools/finishing_moves.py
+--mame ... --rtl sim/finish/obj_dir/Vwunit_finish` plays those frames in
+MAME at the FINISH HIM of a real game (`tools/lua/finishing_moves.lua`) and
+reads the game's result, for every move of a set, with either player
+winning.
+
+```
+make -C sim/finish
+sim/finish/obj_dir/Vwunit_finish -umk3 -opt 8 -char 15 -slot 0      # Kitana, Fatality 1
+python3 tools/finishing_moves.py --mame wtunit ROMDIR umk3 out/finish --dists label \
+        --rtl sim/finish/obj_dir/Vwunit_finish
+```
+
+`-opt` is the OSD's character option (its alphabetical list), `-char` the
+winner's character as the game numbers it (`tools/finishing_moves.py`'s
+`CHARS`), `-slot` the move (0-5, 6 the Mercy); `-table`, `-winner 2`,
+`-left` (the winner faces left), `-nofinish` and `-kstate` change the rest.

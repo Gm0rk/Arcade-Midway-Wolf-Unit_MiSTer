@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Mortal Kombat 3 (rev 1 chip label p4.0)</name>
-	<mratimestamp>20261006</mratimestamp>
+	<mratimestamp>20261007</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>mk3p40</setname>
 	<year>1994</year>
@@ -27,7 +27,7 @@
 0x502000 graphics (5 x 4 MB slots of MAME's video region: 0 1 2 3 4 -- -- --)
 	</romstruct>
 	<rom index="1">
-		<part>00 00 01 02 03 04 FF FF FF FF 00 00 1E 60</part>
+		<part>00 00 01 02 03 04 FF FF FF FF 00 00 1E 60 02 00</part>
 	</rom>
 	<rom index="0" zip="mk3p40.zip|mk3.zip" md5="0894e4b43e825dd8d4eb8f72402c31f6" type="merged">
 		<!-- program ROM -->
