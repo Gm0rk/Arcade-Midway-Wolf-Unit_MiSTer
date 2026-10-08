@@ -4,6 +4,20 @@ An FPGA implementation of the Midway Wolf Unit arcade board (1994-1997), the
 TMS34010-based platform behind Mortal Kombat 3, Ultimate Mortal Kombat 3, WWF
 WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 
+## Contents
+
+- [Hardware](#hardware)
+- [Games](#games)
+- [Features](#features)
+- [CRT Adjust](#crt-adjust)
+- [Hidden menus and cut content](#hidden-menus-and-cut-content)
+- [Kombat Kodes](#kombat-kodes)
+- [Finishing Moves](#finishing-moves)
+- [Controls](#controls)
+- [ROMs](#roms)
+- [Credits and references](#credits-and-references)
+- [License](#license)
+
 ## Hardware
 
 | | |
@@ -40,7 +54,8 @@ the original board.
 - DCS sound: the ADSP-2105 runs each game's own sound program from its
   sound ROMs, 16-bit mono at 31.25 kHz
 - Analog sync centred on a standard 15 kHz screen; CRT Adjust (H-Size,
-  H-Position, V-Shift) and CRT Auto-Width for analog CRT output
+  H-Position, V-Shift), CRT Auto-Width and CRT V-Size (experimental) for
+  analog CRT output (below)
 - Video Timing in the OSD: the board's own 54.7 Hz, or 57 Hz / 60 Hz frames
   for TVs that do not hold 54.7 Hz. Only blank lines are dropped, so the
   whole picture is still sent; games run about 4 % (57 Hz) or 10 % (60 Hz)
@@ -54,6 +69,33 @@ the original board.
 - Hidden menus opened from the OSD, and cut content restored (below)
 - Kombat Kodes for MK3 and UMK3 entered from the OSD (below)
 - Finishing moves for MK3 and UMK3 entered from the OSD (below)
+
+## CRT Adjust
+
+For an analog CRT (Video Settings, with no Scandoubler Fx): turn
+"CRT Adjust" on and the picture can be sized and moved without the screen
+losing sync. H-Size, H-Position and V-Shift work as their names say;
+Auto-Width makes the picture fill a standard line's width and H-Size trims
+from there.
+
+"CRT V-Size" (experimental) changes the picture's height, 3 lines a step,
+"+" taller. "CRT V-Size Mode" picks how:
+
+- PVM: every line of the picture is shown once, with more or fewer lines
+  in a frame. The line rate moves about 1 % a step, which broadcast
+  monitors (PVM, BVM) follow; an arcade monitor or a TV may not
+- Cabinet: the timing stays exactly the board's, and the picture is redrawn
+  taller or shorter, blending neighbouring lines (slightly softer
+  vertically). Safe on any monitor
+
+A taller picture grows downwards; use V-Shift to centre it again. V-Size
+uses the blank lines around the picture, so it has most room with the
+board's own 54.7 Hz Video Timing: at 57 Hz the largest Cabinet steps lose
+the bottom lines, and 60 Hz has hardly any blank lines to spare. Going
+taller in PVM mode also leaves less room for V-Shift.
+
+With CRT Adjust on, HDMI shows the adjusted picture too; turn it off for
+the untouched HDMI picture.
 
 ## Hidden menus and cut content
 
@@ -103,7 +145,8 @@ choose, so you can also open the OSD once the VS screen is up.
 Every kode on the page comes from the game's own kode table, the same in
 all arcade revisions. Kodes listed for the home versions (239-494,
 978-243, 972-279, 432-234) are not in the arcade games. On MK3 the pages
-show only MK3's kodes (no Kombat Zone or Ultimate Kombat Kodes).
+show only MK3's kodes: no Kombat Zone, and MK3's own Ultimate Kombat Kode
+(Smoke).
 
 The core finds these screens through the game's state variable, whose
 address comes with the MRA: use the MRAs of the same release as the core.
@@ -132,19 +175,23 @@ address comes with the MRA: use the MRAs of the same release as the core.
 | 999-999 | The game's revision | UMK3 |
 | 550-550, 717-313, 448-844, 122-221, 004-400 | More messages: "See the Mortal Kombat live tour !!", "Rain can be found in the Graveyard", and three signed by the team | UMK3 |
 
-**Ultimate Kombat Kodes** (Ultimate MK3). At game over, while Mileena,
-Ermac or Classic Sub-Zero is still locked, the game asks for an Ultimate
-Kombat Kode: ten icons, each player stepping five with High Punch, Low
-Punch, Block, Low Kick and High Kick. Pick one on the page before the game
-ends and the core enters it on that screen; the game unlocks the character
-and keeps it in its CMOS (use OSD "Save Settings" to keep it on the SD
-card).
+**Ultimate Kombat Kodes**. At game over, while a hidden character is
+still locked (Ultimate MK3: Mileena, Ermac or Classic Sub-Zero; MK3:
+Smoke), the game asks for an Ultimate Kombat Kode: ten icons, each player
+stepping five with High Punch, Low Punch, Block, Low Kick and High Kick.
+Pick one on the page before the game ends and the core enters it on that
+screen; the game unlocks the character and keeps it in its CMOS (use OSD
+"Save Settings" to keep it on the SD card). Once nobody is left to unlock
+the game stops asking, and a kode picked then just waits. On MK3 the EJB
+Menu's SMOKE item unlocks Smoke too (UN-SMOKE locks him again, as does a
+factory reset before revision 2.1).
 
-| Kode | Unlocks |
-|---|---|
-| 22264-22264 | Mileena |
-| 12344-44321 | Ermac |
-| 81835-81835 | Classic Sub-Zero |
+| Kode | Unlocks | Game |
+|---|---|---|
+| 22264-22264 | Mileena | UMK3 |
+| 12344-44321 | Ermac | UMK3 |
+| 81835-81835 | Classic Sub-Zero | UMK3 |
+| 10902-22234 | Smoke | MK3 |
 
 ## Finishing Moves
 
@@ -224,7 +271,8 @@ is needed (the largest games use 25 MB of ROM).
   behaviour
 - Texas Instruments TMS34010 User's Guide
 - SDRAM controller and MiSTer framework: Sorgelig and the MiSTer-devel team
-- CRT Adjust: Umberto Parisi (rmonic79), with Andrea Bogazzi (@asturur)
+- CRT Adjust and CRT V-Size: Umberto Parisi (rmonic79), with Andrea Bogazzi
+  (@asturur)
 - [Template_MiSTer](https://github.com/MiSTer-devel/Template_MiSTer),
   [MiSTer-CRT-Adjust](https://github.com/rmonic79/MiSTer-CRT-Adjust)
 
