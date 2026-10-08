@@ -50,6 +50,12 @@ set_global_assignment -name PHYSICAL_SYNTHESIS_ASYNCHRONOUS_SIGNAL_PIPELINING ON
 set_global_assignment -name ALM_REGISTER_PACKING_EFFORT MEDIUM
 set_global_assignment -name SEED 1
 
+# the OSD string is over 5000 bytes (Kombat Kodes, Finishing Moves): hps_io's
+# confstr_rom fills its ROM with one loop iteration per byte, and Quartus
+# stops constant loops at 5000 iterations by default (error 10106).
+# Main_MiSTer reads up to 10 KB of it.
+set_global_assignment -name VERILOG_CONSTANT_LOOP_LIMIT 16384
+
 # report the worst-case paths of each clock in the timing report
 # (output_files/*.sta.rpt); tools/timing_paths.tcl lists more
 set_global_assignment -name TIMEQUEST_DO_REPORT_TIMING ON
