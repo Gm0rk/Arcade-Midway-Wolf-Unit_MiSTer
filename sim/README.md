@@ -121,3 +121,28 @@ python3 tools/finishing_moves.py --mame wtunit ROMDIR umk3 out/finish --dists la
 winner's character as the game numbers it (`tools/finishing_moves.py`'s
 `CHARS`), `-slot` the move (0-5, 6 the Mercy); `-table`, `-winner 2`,
 `-left` (the winner faces left), `-nofinish` and `-kstate` change the rest.
+
+## `crt/` - the analog CRT stage
+
+`tb_crt.cpp` runs `rtl/video/wunit_crt.sv` (centred sync, CRT V-Size, CRT
+Adjust, Auto-Width) on its own with the Wolf Unit raster (506 dots x 289
+lines, the picture on dots 101-500 of lines 20-273, a dot every 12 clocks)
+and a test picture whose colours say where each dot came from (R the
+picture line, G/B the column). It prints each output frame (clocks, lines,
+VSync lines, picture lines, shortest and longest line) and checks the last
+frames against the settings: whole lines in order and the board's frame
+time in PVM mode with 289 - 3n lines, the board's line timing in Cabinet
+mode with the picture on 254 + 3n lines.
+
+```
+make -C sim/crt
+sim/crt/obj_dir/Vwunit_crt -vsize 3 -frames 34              # PVM, 3 steps taller
+sim/crt/obj_dir/Vwunit_crt -vsize -7 -cabinet -frames 34    # Cabinet, 7 steps shorter
+sim/crt/obj_dir/Vwunit_crt -vsize 7 -change 30 0 -frames 60 # back to 0, ramping down
+```
+
+`-hsize`, `-hpos`, `-vshift`, `-autow`, `-off` set the rest of CRT Adjust,
+`-vtot 277|263` the 57 / 60 Hz Video Timing frame. `-log FILE` writes every
+output line (dots, a hash of them, first and last dot); built with
+`-DNO_VSIZE` the testbench drives a stage without the V-Size ports, so two
+builds of the stage can be compared line for line.
