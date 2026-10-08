@@ -17,7 +17,17 @@
 //     there.
 //   - H-Size about the middle: CRT Adjust stretches from HSync, so a centring
 //     table moves the content back by -m x H / (base + H) dots.
+//   - CRT V-Size (rmonic79's crt_vsize, experimental): vertical size, in
+//     front of CRT Adjust. PVM mode retimes the frame (more or fewer lines
+//     of a different length, every source line once); Cabinet mode keeps the
+//     native timing and redraws the picture taller or shorter, blending
+//     neighbouring lines in linear light. V-Size 0 is a pass-through.
 //   - the OSD/HDMI window (DE) while CRT Adjust is on.
+//
+//  Chain: board video -> centred sync -> crt_vsize -> crt_adjust -> output.
+//  Core-side, as both modules are meant to be used: nothing in sys/ changes,
+//  so HDMI follows the adjustments while CRT Adjust is on (Off leaves the
+//  HDMI picture untouched).
 //
 //  Ported from Arcade-ITech8 following its porting notes ("CRT Adjust and
 //  Auto-Width: Porting Handoff") for the Y Unit, and taken over unchanged:
@@ -30,6 +40,15 @@
 //  quarter-clocks, so a dot lasts (48 + h_eff) / 384 us (12 clocks at 0).
 //  The accumulator restarts on the rise of crt_adjust's hs_ref_out so the
 //  read rate and its read counter start on the same edge.
+//
+//  V-Size: the OSD's step n (-7..+7) is 3 lines, + taller: crt_vsize gets
+//  -3n lines added to the frame (its "+" is shorter). It needs a uniform dot
+//  enable with at least 8 clocks a dot (12 here) and the true VBlank
+//  (sync_center's, as CRT Adjust had); its ring holds 46 lines of 416 dots
+//  (the Wolf picture is 400 dots; a full line would lose its last dot in a
+//  400-dot ring). In PVM mode a frame has 289 - 3n lines, up to 310, so CRT
+//  Adjust's V-Shift register is sized for 320 lines and its frame length
+//  is counted on its own input.
 //============================================================================
 
 module wunit_crt
@@ -44,6 +63,8 @@ module wunit_crt
 	input       [4:0] hsize_osd,     // H-Size, 5-bit two's complement
 	input       [6:0] hpos_osd,      // H-Position: 0..48 = 0..+48, 49..96 = -48..-1
 	input       [4:0] vshift_osd,    // V-Shift, 5-bit two's complement
+	input       [3:0] vsize_osd,     // V-Size: OSD index 0..7 = 0..+7, 8..14 = -7..-1 (+ taller)
+	input             vsize_mode,    // V-Size mode: 0 PVM (retimed lines), 1 Cabinet (native timing)
 
 	// board video (RGB after overlays), active-high sync and blanking
 	input       [7:0] r_in,
@@ -85,12 +106,22 @@ reg               autofill;
 reg  signed [4:0] hsize_s;
 reg         [6:0] hpos_d;
 reg  signed [5:0] vshift_s;
+reg  signed [5:0] vsize_s;           // lines added to the frame: -3 x step
+reg               vsize_cab;
+// the OSD lists 15 values, 0 +1..+7 -7..-1: index 8..14 is -7..-1 (index -
+// 15), not the index read as a 4-bit signed number (that would be -8..-2,
+// and -8 needs a 24-line ring margin, more than the 21 the ring has)
+wire signed [5:0] vstep = (vsize_osd <= 4'd7)  ? $signed({2'b00, vsize_osd})
+                        : (vsize_osd == 4'd15) ? 6'sd0
+                        :                        $signed({2'b00, vsize_osd}) - 6'sd15;
 always @(posedge clk) if (ce_pix) begin
-	crt_on   <= crt_en & ~scandoubler;
-	autofill <= autow;
-	hsize_s  <= $signed(hsize_osd);
-	hpos_d   <= hpos_osd;
-	vshift_s <= $signed({vshift_osd[4], vshift_osd});
+	crt_on    <= crt_en & ~scandoubler;
+	autofill  <= autow;
+	hsize_s   <= $signed(hsize_osd);
+	hpos_d    <= hpos_osd;
+	vshift_s  <= $signed({vshift_osd[4], vshift_osd});
+	vsize_s   <= -(vstep + (vstep <<< 1));
+	vsize_cab <= vsize_mode;
 end
 
 // H-Position: 0..48 right, 49..96 = -48..-1 left
@@ -102,7 +133,6 @@ wire signed [8:0] hpos_usr = (hpos_d <= 7'd48) ? $signed({2'b00, hpos_d})
 //----------------------------------------------------------------------------
 
 wire c_vb;
-
 wire [9:0] fr_lines;               // measured lines per frame (0 until measured)
 
 sync_center #(.T2(572), .HW(38), .VC(138), .VW(3)) sync_center
@@ -214,34 +244,100 @@ always @(posedge clk) begin
 end
 
 //----------------------------------------------------------------------------
-// CRT Adjust, fed with the centred sync. Its line buffer samples VBlank at
-// HSync, which now comes before the board's own line starts, so VBlank comes
-// from sync_center (vb_out) to keep the first picture line.
+// CRT V-Size, fed with the centred sync. CRT Adjust's line buffer (and
+// crt_vsize's pass-through) sample VBlank at HSync, which now comes before
+// the board's own line starts, so VBlank comes from sync_center (vb_out) to
+// keep the first picture line. Everything after it takes crt_vsize's
+// stream: its dot enable, its sync, its DE and its regenerated VBlank.
+//----------------------------------------------------------------------------
+
+wire [7:0] vz_r, vz_g, vz_b;
+wire       vz_hs, vz_vs, vz_de, vz_vb, vz_ce;
+
+crt_vsize #(
+	.RING_LINES (46),                // |V-Size| up to 21 lines
+	.LINE_PX    (416)                // more than the 400-dot picture
+) crt_vsize (
+	.clk        (clk),
+	.pxl_cen    (ce_pix),
+	.active     (crt_on),
+	.tube_mode  (vsize_cab),
+	.vsize      (vsize_s),
+	.r_in       (r_in),
+	.g_in       (g_in),
+	.b_in       (b_in),
+	.hs_in      (c_hs),
+	.vs_in      (c_vs),
+	.de_in      (~(hb_in | vb_in)),
+	.vb_in      (c_vb),
+	.r_out      (vz_r),
+	.g_out      (vz_g),
+	.b_out      (vz_b),
+	.hs_out     (vz_hs),
+	.vs_out     (vz_vs),
+	.de_out     (vz_de),
+	.vb_out     (vz_vb),
+	.ce_out     (vz_ce)
+);
+
+// Lines in a frame for CRT Adjust's V-Shift (a negative one is a delay of
+// frame - N lines, so the delay must follow the frame length): sync_center's
+// measurement (it only takes a length seen twice, so it rides out a change
+// of raster), except while PVM mode retimes the frame. Then it is counted on
+// crt_vsize's stream, frame by frame: the frame changes a line a frame while
+// V-Size ramps, and the delay moving with it keeps VSync in place. After
+// V-Size goes back to 0 the ramp down takes up to 21 frames, so the count
+// is used for 24 frames more.
+reg        vz_hs_d = 1'b0, vz_vs_d = 1'b0;
+reg  [9:0] vz_lcnt = 10'd0, vz_lines = 10'd0;
+reg  [4:0] pvm_hold = 5'd0;
+wire       vz_hs_rise = vz_hs & ~vz_hs_d;
+always @(posedge clk) begin
+	vz_hs_d <= vz_hs;
+	vz_vs_d <= vz_vs;
+	if (vz_vs & ~vz_vs_d) begin
+		vz_lines <= vz_lcnt;
+		vz_lcnt  <= vz_hs_rise ? 10'd1 : 10'd0;
+		pvm_hold <= (~vsize_cab && vsize_s != 6'sd0) ? 5'd24
+		          : (pvm_hold != 5'd0) ? pvm_hold - 5'd1 : 5'd0;
+	end
+	else if (vz_hs_rise && ~&vz_lcnt)
+		vz_lcnt  <= vz_lcnt + 10'd1;
+	if (~crt_on) pvm_hold <= 5'd0;   // crt_vsize drops to pass-through at once
+end
+// (the board's 289 until sync_center has measured a frame: CRT Adjust's own
+// fallback is its VTOTAL, now 320)
+reg  [9:0] vt_lines = 10'd289;
+always @(posedge clk) vt_lines <= (pvm_hold != 5'd0 && vz_lines != 10'd0) ? vz_lines
+                                : (fr_lines != 10'd0)                    ? fr_lines : 10'd289;
+
+//----------------------------------------------------------------------------
+// CRT Adjust
 //----------------------------------------------------------------------------
 
 wire       str_hb, str_vb;
 wire [7:0] str_r, str_g, str_b;
 
 crt_adjust #(
-	.VTOTAL    (289),
+	.VTOTAL    (320),                // 289 lines, up to 310 with PVM V-Size
 	.HTOTAL    (506),
 	.HPOS_MODE (1)                   // content shift: the picture is wide
 ) crt_adjust (
 	.clk        (clk),
-	.pxl_cen    (ce_pix),
+	.pxl_cen    (vz_ce),
 	.pxl2_cen   (rd_ce),
 	.active     (crt_on),
 	.hsize      (h_eff[4:0]),        // not used inside (the read rate comes from rd_ce)
 	.hoffset    (hpos_off),
 	.voffset    (vshift_s),
-	.vtotal_in  (fr_lines),          // the frame is shorter with the 57/60 Hz video timings
-	.r_in       (r_in),
-	.g_in       (g_in),
-	.b_in       (b_in),
-	.hs_in      (c_hs),
-	.vs_in      (c_vs),
-	.hb_in      (hb_in | vb_in),
-	.vb_in      (c_vb),
+	.vtotal_in  (vt_lines),
+	.r_in       (vz_r),
+	.g_in       (vz_g),
+	.b_in       (vz_b),
+	.hs_in      (vz_hs),
+	.vs_in      (vz_vs),
+	.hb_in      (~vz_de),
+	.vb_in      (vz_vb),
 	.r_out      (str_r),
 	.g_out      (str_g),
 	.b_out      (str_b),
