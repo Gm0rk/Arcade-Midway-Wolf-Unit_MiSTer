@@ -13,9 +13,10 @@
 #
 #  The kodes themselves are fixed in the core. This script checks them:
 #    - the OSD pages (Arcade-Midway-Wolf-Unit.sv: "Kombat Kodes" links to
-#      five category pages P4-P8; status bits 18-67 in order) and the
-#      player's table (rtl/wunit_kodes.sv) list the same digits in the same
-#      order, and the UMK3-only lines (H6) are the ones MK3 lacks
+#      five category pages P4-P8; status bits 18-67, then 73, in order) and
+#      the player's table (rtl/wunit_kodes.sv) list the same digits in the
+#      same order, the UMK3-only lines (H6) are the ones MK3 lacks and the
+#      MK3-only line (h6, its Smoke kode) the one UMK3 lacks
 #    - every VS screen kode the core offers for the game is in the game's
 #      kode table, found by its lookup loop:
 #          MOVI table,A0 ; MOVE *A0+,A1,1 ; JREQ ; CMP A1,A5
@@ -23,11 +24,14 @@
 #      a jump table by position). The game takes the first match: MK3
 #      lists 688422 twice, so its FAST UPPERCUT RECOVERY entry is never
 #      reached (UMK3 moved it to 788322)
-#    - UMK3: the three Ultimate Kombat Kodes. Their tables are hidden: the
+#    - the Ultimate Kombat Kodes. UMK3 has three, their tables hidden: the
 #      game over code pushes a key, then adds it to each table's address
 #          MOVI key,A0 ; MOVE A0,-*A12,1 ; MOVI 13h,A0 (the screen's state)
 #          ... MOVI x,A7 ; ADD A0,A7 ; CALLR compare
-#      and the compare takes word i of a table as digit + i
+#      and the compare takes word i of a table as digit + i. MK3 (1.0 on,
+#      p4.0 included) has one, Smoke's, in plain digits: the compare walks
+#      the ten icons from the screen's process data
+#          MOVI table,A5 ; MOVE A13,A6 ; ADDI 230h,A6
 #
 #  Usage:
 #    kombat_kodes.py PROGRAM.BIN mk3|umk3   the image's kodes, state variable
@@ -48,7 +52,7 @@ RAM_WORDS = 0x40000             # 512 KB
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOP = os.path.join(REPO, "Arcade-Midway-Wolf-Unit.sv")
 PLAYER = os.path.join(REPO, "rtl", "wunit_kodes.sv")
-FIRST_BIT = 18                  # status bit of the first kode
+KODE_BITS = list(range(18, 68)) + [73]   # status bits of the kodes, in order
 
 
 class NoMatch(Exception):
@@ -100,10 +104,18 @@ def vs_kodes(rom):
     return out
 
 
-def ukk_kodes(rom):
-    """The Ultimate Kombat Kodes (UMK3), as 10-digit strings."""
+def ukk_kodes(rom, family="umk3"):
+    """The Ultimate Kombat Kodes, as 10-digit strings."""
     w = _words(rom)
     out = []
+    if family == "mk3":
+        for i in range(len(w) - 5):
+            if w[i] == 0x09E5 and w[i + 3] == 0x4DA6 and w[i + 4] == 0x0B06 and w[i + 5] == 0x0230:
+                d = struct.unpack_from("<10H", rom, _off(w[i + 1] | (w[i + 2] << 16)))
+                if any(x > 9 for x in d):
+                    raise NoMatch("Ultimate Kombat Kode table")
+                out.append("".join(map(str, d)))
+        return out
     for i in range(len(w) - 6):
         if w[i] == 0x09E0 and w[i + 3] == 0xA20C and w[i + 4] == 0x09C0 and w[i + 5] == 0x0013:
             key = w[i + 1] | (w[i + 2] << 16)
@@ -119,18 +131,20 @@ def ukk_kodes(rom):
 
 
 def core_kodes():
-    """The core's kodes: [(index, umk3 only, label, digits)] from the OSD
-    page, checked against the player's table."""
+    """The core's kodes: [(index, only, label, digits)] from the OSD page
+    (only: "umk3" for an H6 line, "mk3" for an h6 line, else None), checked
+    against the player's table."""
     top = open(TOP, encoding="utf-8").read()
-    osd = []
-    for m in re.finditer(r'"(H6)?P[4-8]R\[(\d+)\],([^;]*?) (\d{3}-\d{3}|\d{5}-\d{5});"', top):
-        osd.append((int(m.group(2)) - FIRST_BIT, bool(m.group(1)), m.group(3), m.group(4).replace("-", "")))
+    osd, bits = [], []
+    for m in re.finditer(r'"(H6|h6)?P[4-8]R\[(\d+)\],([^;]*?) (\d{3}-\d{3}|\d{5}-\d{5});"', top):
+        bits.append(int(m.group(2)))
+        osd.append((len(osd), {"H6": "umk3", "h6": "mk3"}.get(m.group(1)), m.group(3), m.group(4).replace("-", "")))
     table = {}
     for m in re.finditer(r"6'd(\d+):\s+kode = (vs|ukk)\((?:24|40)'h([0-9_]+)\)", open(PLAYER, encoding="utf-8").read()):
         table[int(m.group(1))] = m.group(3).replace("_", "")
     err = []
-    if [k[0] for k in osd] != list(range(len(osd))):
-        err.append("OSD kode lines are not on consecutive status bits from %d" % FIRST_BIT)
+    if bits != KODE_BITS[:len(bits)]:
+        err.append("OSD kode lines are not on status bits %s in order" % KODE_BITS)
     for idx, _, label, digits in osd:
         if table.get(idx) != digits:
             err.append(f"{label}: OSD {digits}, player table {table.get(idx)}")
@@ -153,15 +167,14 @@ def check(family, rom):
     except NoMatch as e:
         return [str(e)]
     ukk = []
-    if family == "umk3":
-        try:
-            ukk = ukk_kodes(rom)
-        except NoMatch as e:
-            err.append(str(e))
-    for _, umk3_only, label, digits in kodes:
-        if umk3_only and family != "umk3":
-            if digits in table:
-                err.append(f"{label}: in the {family} table but hidden for it")
+    try:
+        ukk = ukk_kodes(rom, family)
+    except NoMatch as e:
+        err.append(str(e))
+    for _, only, label, digits in kodes:
+        if only and only != family:
+            if digits in table or digits in ukk:
+                err.append(f"{label}: in the {family} tables but hidden for it")
             continue
         if len(digits) == 6 and digits not in table:
             err.append(f"{label}: not in the kode table")
@@ -187,8 +200,8 @@ def config(family, rom):
 
 def main():
     if sys.argv[1:] == ["--core"]:
-        for idx, umk3_only, label, digits in core_kodes():
-            print(f"{FIRST_BIT + idx:3d} {'UMK3' if umk3_only else '    '} {digits:10s} {label}")
+        for idx, only, label, digits in core_kodes():
+            print(f"{KODE_BITS[idx]:3d} {(only or '').upper():4s} {digits:10s} {label}")
         return
     path, family = sys.argv[1], sys.argv[2]
     rom = open(path, "rb").read()
@@ -196,8 +209,7 @@ def main():
           f"(bit address {RAM_BIT + (state_var(rom) << 4):#x})")
     table = vs_kodes(rom)
     print(f"{len(table)} VS screen kodes: " + " ".join(table))
-    if family == "umk3":
-        print("Ultimate Kombat Kodes: " + " ".join(ukk_kodes(rom)))
+    print("Ultimate Kombat Kodes: " + (" ".join(ukk_kodes(rom, family)) or "none"))
     err = check(family, rom)
     print("core kodes: " + ("OK" if not err else "; ".join(err)))
     sys.exit(1 if err else 0)
