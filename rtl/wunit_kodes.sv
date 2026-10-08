@@ -14,11 +14,14 @@
 //  messages, 2 on 2 Explosive Kombat); tools/kombat_kodes.py checks every
 //  kode below against each set's table.
 //
-//  Ultimate Kombat Kodes (UMK3). At game over, while Mileena, Ermac or
-//  Classic Sub-Zero is still locked, the game shows "ENTER AN ULTIMATE
-//  KOMBAT KODE": ten icons, P1 then P2 stepping theirs with High Punch, Low
-//  Punch, Block, Low Kick and High Kick, and a countdown. A kode that
-//  matches unlocks its character and the game stores that in its CMOS.
+//  Ultimate Kombat Kodes. At game over, while a hidden character is still
+//  locked (UMK3: Mileena, Ermac or Classic Sub-Zero; MK3 from revision 1.0
+//  on: Smoke), the game shows "ENTER (AN / THE) ULTIMATE KOMBAT KODE": ten
+//  icons, P1 then P2 stepping theirs with High Punch, Low Punch, Block, Low
+//  Kick and High Kick, and a countdown. A kode that matches unlocks its
+//  character and the game stores that in its CMOS (MK3: CMOS item 10h =
+//  EDB0h, also set by the EJB menu's SMOKE item). Both games use the same
+//  screen state and buttons.
 //
 //  Both screens set the game's state variable (in main RAM, its address
 //  from the MRA: config bytes 12-13) and run for a few seconds: the VS
@@ -67,7 +70,7 @@ function automatic [40:0] ukk(input [39:0] d);
 	ukk = {1'b1, d};
 endfunction
 
-// the OSD's kodes, in its order (status bits 18-67 in the top level)
+// the OSD's kodes, in its order (status bits 18-67, then 73, in the top level)
 function automatic [40:0] kode(input [5:0] n);
 	case (n)
 		// fighting (11-16 UMK3 only)
@@ -121,10 +124,11 @@ function automatic [40:0] kode(input [5:0] n);
 		6'd44: kode = vs(24'h448844);       // DON'T JUMP AT ME - MXV
 		6'd45: kode = vs(24'h122221);       // SKUNKY !! - E.F.
 		6'd46: kode = vs(24'h004400);       // WHATCHA GUN DO ? - E.B.
-		// Ultimate Kombat Kodes (UMK3)
+		// Ultimate Kombat Kodes (47-49 UMK3, 50 MK3: status bit 73)
 		6'd47: kode = ukk(40'h22264_22264); // Mileena
 		6'd48: kode = ukk(40'h12344_44321); // Ermac
 		6'd49: kode = ukk(40'h81835_81835); // Classic Sub-Zero
+		6'd50: kode = ukk(40'h10902_22234); // Smoke (MK3)
 		default: kode = 41'd0;
 	endcase
 endfunction
