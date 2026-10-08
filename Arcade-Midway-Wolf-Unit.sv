@@ -3,7 +3,9 @@
 //
 //  Top level (emu): HPS interface, ROM loading, memories, per-game
 //  configuration and inputs, the OSD's code players (hidden menus, Kombat
-//  Kodes, finishing moves), video output with CRT Adjust, audio.
+//  Kodes, finishing moves), video output with CRT Adjust and CRT V-Size,
+//  audio. Nothing in sys/ is changed (MiSTer-devel rule): the CRT stage sits
+//  here, in front of the framework's video path.
 //
 //  Clocks: everything runs from one 96 MHz clock (clk_sys). The 34010 and
 //  the pixel clock (8 MHz) are clock enables derived from it.
@@ -68,6 +70,8 @@ localparam CONF_STR = {
 	"H1P1O[100:96],CRT H-Size,0,+1,+2,+3,+4,+5,+6,+7,+8,+9,+10,+11,+12,+13,+14,+15,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
 	"H1P1O[85:79],CRT H-Position,0,+1,+2,+3,+4,+5,+6,+7,+8,+9,+10,+11,+12,+13,+14,+15,+16,+17,+18,+19,+20,+21,+22,+23,+24,+25,+26,+27,+28,+29,+30,+31,+32,+33,+34,+35,+36,+37,+38,+39,+40,+41,+42,+43,+44,+45,+46,+47,+48,-48,-47,-46,-45,-44,-43,-42,-41,-40,-39,-38,-37,-36,-35,-34,-33,-32,-31,-30,-29,-28,-27,-26,-25,-24,-23,-22,-21,-20,-19,-18,-17,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
 	"H1P1O[78:74],CRT V-Shift,0,+1,+2,+3,+4,+5,+6,+7,+8,+9,+10,+11,+12,+13,+14,+15,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
+	"H1P1O[89:86],CRT V-Size,0,+1,+2,+3,+4,+5,+6,+7,-7,-6,-5,-4,-3,-2,-1;",
+	"H1P1O[90],CRT V-Size Mode,PVM,Cabinet;",
 	"P2,Controls;",
 	"P2-;",
 	"P2O[9],Service Mode,Off,On;",
@@ -83,7 +87,7 @@ localparam CONF_STR = {
 	"P3P5,Round 1 Winner Battles;",
 	"H6P3P6,Kombat Zone;",
 	"P3P7,Messages;",
-	"H6P3P8,Ultimate Kombat Kodes;",
+	"P3P8,Ultimate Kombat Kodes;",
 	"P4-;",
 	"P4R[18],Throwing Disabled 100-100;",
 	"P4R[19],Blocking Disabled 020-020;",
@@ -139,6 +143,7 @@ localparam CONF_STR = {
 	"H6P8R[65],Mileena 22264-22264;",
 	"H6P8R[66],Ermac 12344-44321;",
 	"H6P8R[67],Classic Sub-Zero 81835-81835;",
+	"h6P8R[73],Smoke 10902-22234;",
 	// Finishing Moves: tools/finishing_moves.py --write prints these lines
 	"H2P9,Finishing Moves;",
 	"P9-;",
@@ -764,15 +769,17 @@ wunit_macro macro
 // Winner Battles, Kombat Zone, Messages, Ultimate Kombat Kodes: P4-P8; the
 // OSD has one level of pages, so Back from a category goes to the main
 // menu) listing the kodes the game's program ROM has (the UMK3-only lines
-// and pages hidden on MK3), each a trigger on status bits 18-67 in order. A pick is entered by the player (rtl/wunit_kodes.sv) at the
+// and pages hidden on MK3, MK3's Smoke kode on UMK3), each a trigger on
+// status bits 18-67 in order, then 73 (MK3's Ultimate Kombat Kode: 68-72
+// were taken). A pick is entered by the player (rtl/wunit_kodes.sv) at the
 // next screen that takes it: the VS screen of a two-player fight, or, for
-// an Ultimate Kombat Kode (UMK3), the game over screen. It finds those by
+// an Ultimate Kombat Kode, the game over screen. It finds those by
 // the game's state variable, whose main RAM word the MRA gives (config
 // bytes 12-13). An OSD message says the kode is waiting, then entered.
 //////////////////////////////////////////////////////////////////
 
-wire [49:0] kode_bits = status[67:18];
-reg  [49:0] kode_bits_d;
+wire [50:0] kode_bits = {status[73], status[67:18]};
+reg  [50:0] kode_bits_d;
 reg         kode_sel;
 reg   [5:0] kode_idx;
 wire [15:0] kode_press0, kode_press1;
@@ -789,7 +796,7 @@ always @(posedge clk_sys) begin
 
 	kode_bits_d <= kode_bits;
 	kode_sel    <= 1'b0;
-	for (ki = 49; ki >= 0; ki = ki - 1)
+	for (ki = 50; ki >= 0; ki = ki - 1)
 		if (kode_bits[ki] & ~kode_bits_d[ki]) begin
 			kode_sel <= 1'b1;
 			kode_idx <= ki[5:0];
@@ -1040,12 +1047,12 @@ sdram sdram
 // Video
 //////////////////////////////////////////////////////////////////
 
-// ---- analog CRT stage: centred sync, CRT Adjust, Auto-Width (rtl/video/wunit_crt.sv) ----
+// ---- analog CRT stage: centred sync, CRT V-Size, CRT Adjust, Auto-Width (rtl/video/wunit_crt.sv) ----
 //
 // The analog sync is always the centred one (picture in the middle of a
 // standard 15 kHz line and frame); HDMI sees the same picture either way.
-// CRT Adjust is off while a scandoubler effect is on (its read rate assumes
-// native 15 kHz).
+// CRT Adjust (and with it CRT V-Size) is off while a scandoubler effect is
+// on (its read rate assumes native 15 kHz).
 
 wire scandoubler = (status[5:3] != 3'd0) || forced_scandoubler;
 
@@ -1065,6 +1072,8 @@ wunit_crt wunit_crt
 	.hsize_osd   (status[100:96]),
 	.hpos_osd    (status[85:79]),
 	.vshift_osd  (status[78:74]),
+	.vsize_osd   (status[89:86]),
+	.vsize_mode  (status[90]),
 
 	.r_in        (core_r),
 	.g_in        (core_g),
