@@ -1,0 +1,122 @@
+# Mortal Kombat 3
+
+MRA sets: mk3 (rev 2.1), with rev 2.0, rev 1.0 and rev 1 chip label p4.0
+in `_alternatives`. Use the MRAs of the same release as the core: they tell
+it where the game keeps its state and which finishing moves the set has.
+
+## Contents
+
+- [Controls](#controls)
+- [EJB Menu](#ejb-menu)
+- [Kombat Kodes](#kombat-kodes)
+- [Ultimate Kombat Kode](#ultimate-kombat-kode)
+- [Finishing Moves](#finishing-moves)
+
+## Controls
+
+High Punch, Block, High Kick, Low Punch, Low Kick, Run; two players.
+
+## EJB Menu
+
+The developers' test menu, in every revision. OSD "Open EJB Menu" while
+the game is in attract mode (by hand: P1 Block x5, P2 Block x10, P1 Block
+x3, P2 Block x1, P1 Block x2, P2 Block x2, P1 Block x3, P2 Block x3). It
+adds extra audits, the full credits, Character Endings, the
+"Penacho/Miller" Galaga-style game and SMOKE / UN-SMOKE (Smoke playable or
+not). Revisions 1.0 and p4.0 have an unfinished "Hello" screen in place of
+the credits.
+
+## Kombat Kodes
+
+On the VS screen before a two-player fight each player steps three icons
+with Low Punch, Block and Low Kick; the six digits (player 1's three, then
+player 2's) switch something on for the fight. The OSD page "Kombat Kodes"
+enters them for you, sorted into Fight, Round 1 Winner Battles, Messages
+and Ultimate Kombat Kodes (Back from a category returns to the main menu).
+
+Pick a kode at any time in a two-player game; a message says it is
+waiting, and at the next VS screen the core presses the buttons as the two
+players would. The game then shows the kode's message under the fighters.
+A kode picked when the VS screen is nearly over waits for the next one.
+With "Pause when OSD is open" on (the default), the game waits while you
+choose, so you can also open the OSD once the VS screen is up.
+
+Every kode on the page comes from the game's own kode table, the same in
+all revisions. Kodes listed for the home versions (239-494, 978-243,
+972-279, 432-234) are not in the arcade game.
+
+| Kode | Message / effect |
+|---|---|
+| 100-100 | Throwing disabled |
+| 020-020 | Blocking disabled |
+| 987-123 | No powerbars |
+| 466-466 | Unlimited run |
+| 688-422 | Dark Kombat |
+| 460-460 | Randper Kombat (fighters morph at random) |
+| 985-125 | Psycho Kombat: Dark and Randper Kombat, flickering powerbars, unlimited run, no blocking, fast uppercut recovery |
+| 033-000 / 000-033 | Player 1 / player 2 half power |
+| 707-000 / 000-707 | Player 1 / player 2 quarter power |
+| 642-468 | "You are entering the Land of Rellim": the hidden Galaga-style game |
+| 969-141 / 033-564 / 769-342 / 205-205 | The winner of the round battles Motaro / Shao Kahn / Noob Saibot / Smoke |
+| 987-666, 282-282, 123-926 | Messages: "Hold flippers during casino run", "No Fear = EB button, skydive, max countdown", "There is no knowledge that is not power" |
+
+## Ultimate Kombat Kode
+
+At game over, while Smoke is still locked, the game asks for the Ultimate
+Kombat Kode: ten icons, each player stepping five with High Punch, Low
+Punch, Block, Low Kick and High Kick. Pick it on the Kombat Kodes page
+before the game ends and the core enters it on that screen; Smoke becomes
+playable and the game keeps that in its CMOS (use OSD "Save Settings" to
+keep it on the SD card). Once Smoke is unlocked the game stops asking, and
+a kode picked then just waits.
+
+| Kode | Unlocks |
+|---|---|
+| 10902-22234 | Smoke |
+
+The EJB Menu's SMOKE item unlocks Smoke too (UN-SMOKE locks him again, as
+does a factory reset before revision 2.1).
+
+## Finishing Moves
+
+The OSD page "Finishing Moves" enters finishing moves for you. Choose the
+fighter under "Character"; the page then lists that fighter's moves
+(Fatality 1 and 2, Stage Fatality, Animality, Friendship, Babality: the
+ones it has) with where to stand, and the Mercy every fighter shares.
+
+At FINISH HIM, stand at the distance the line gives, open the OSD and pick
+the move: the core enters it on the winner's controls, player 1 or 2,
+turned to the side the winner faces. With "Pause when OSD is open" on (the
+default) FINISH HIM waits while you choose. The fighter must be the
+winner's (a message says so if not), and the game's own rules still apply:
+
+- Stage Fatality: on the Subway, The Pit 3 or the Bell Tower
+- Friendship and Babality: only if the winner did not press Block in the
+  last round
+- Mercy: in round 3, when each player has won a round; the loser gets back
+  up with a little energy. An Animality needs a Mercy in the same round
+  first: Mercy, beat the opponent again, then the Animality
+- Kabal's Fatality 1 also needs room behind the opponent (not at the edge
+  of the screen)
+
+Distances (between the fighters, the screen is 400 pixels wide):
+
+| Word | Where the winner stands |
+|---|---|
+| Close | next to the opponent (under about 90 pixels) |
+| Sweep | where a sweep reaches (about 90-130) |
+| Outside sweep | just out of sweep reach (about 130-165) |
+| Half screen | about a jump away (about 165-260) |
+| Full screen | farther |
+
+Two words joined by a dash are a range from the first to the second
+(Close-sweep: close or at sweep distance; Sweep-half: anywhere from sweep
+to half screen). Not close is sweep distance or farther, Past sweep is
+outside sweep or farther, Half or full is half screen or farther, and
+Anywhere is any distance.
+
+The moves come from the game's own move tables. Revisions 2.0 and 2.1
+have the same moves as Ultimate MK3; revision 1.0 and the p4.0 chip set
+have older ones: other fatalities, the same Stage Fatality for everybody,
+a Babality for Kano only, no Friendships (the game has them switched off),
+and a Mercy that also works from sweep distance.
