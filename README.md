@@ -1,5 +1,7 @@
 # Midway Wolf Unit for [MiSTer](https://github.com/MiSTer-devel/Main_MiSTer/wiki)
 
+AI disclosure: this core was developed with the help of an AI assistant (Claude, by Anthropic).
+
 An FPGA implementation of the Midway Wolf Unit arcade board (1994-1997), the
 TMS34010-based platform behind Mortal Kombat 3, Ultimate Mortal Kombat 3, WWF
 WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
