@@ -569,8 +569,11 @@ wire [15:0] nv_din  = cmos_clr ? 16'h0000 : ioctl_dout;
 //////////////////////////////////////////////////////////////////
 // Inputs
 //
-// Joystick bits: 0 R, 1 L, 2 D, 3 U, 4-9 B1-B6, 10 Start, 11 Coin, 12 Test,
-// 13 Pause. Ports are active low. The layouts follow MAME's input ports
+// Joystick bits: 0 R, 1 L, 2 D, 3 U, then the MRA's <buttons> list in
+// order: the game's buttons from bit 4, then Start, Coin, Test, Pause. The
+// games have 6 (MK3, UMK3), 5 (WWF) or 3 buttons (Open Ice, NBA Hangtime,
+// Rampage), so Start is bit 10, 9 or 7 (the CONF_STR's J1 line, used
+// without an MRA, has 6 buttons). Ports are active low. The layouts follow MAME's input ports
 // (midwunit.cpp): IN0 holds players 1 and 2 (stick and three buttons each),
 // IN1 the fighting games' other three buttons or players 3 and 4, IN2 the
 // coins, starts and cabinet switches.
@@ -591,7 +594,13 @@ function automatic [6:0] team(input [31:0] j);
 	team = {j[4], j[6], j[5], udlr(j)};
 endfunction
 
-wire       test_sw = status[9] | joy0[12] | joy1[12];
+// Start, Coin, Test, Pause of a controller: the four bits after the
+// layout's buttons
+wire [4:0] sys_at = (cfg_layout == L_MK) ? 5'd10 : (cfg_layout == L_WWF) ? 5'd9 : 5'd7;
+wire [3:0] sys0 = joy0[sys_at +: 4], sys1 = joy1[sys_at +: 4];
+wire [3:0] sys2 = joy2[sys_at +: 4], sys3 = joy3[sys_at +: 4];
+
+wire       test_sw = status[9] | sys0[2] | sys1[2];
 reg  [3:0] svc_cnt  = 4'd0;                 // service credit held while non-zero
 reg  [3:0] tilt_cnt = 4'd0;                 // slam tilt held while non-zero
 wire       svc_sw  = |svc_cnt;
@@ -605,17 +614,17 @@ always @(*) begin
 	in2 = 16'h0000;
 
 	// IN2: common to every game
-	in2[0]  = joy0[11];               // coin 1
-	in2[1]  = joy1[11];               // coin 2
-	in2[2]  = joy0[10];               // start 1
+	in2[0]  = sys0[1];                // coin 1
+	in2[1]  = sys1[1];                // coin 2
+	in2[2]  = sys0[0];                // start 1
 	in2[3]  = tilt_sw;                // tilt (slam switch)
 	in2[4]  = test_sw;                // test
-	in2[5]  = joy1[10];               // start 2
+	in2[5]  = sys1[0];                // start 2
 	in2[6]  = svc_sw;                 // service credit
-	in2[7]  = joy2[11];               // coin 3
-	in2[8]  = joy3[11];               // coin 4
-	in2[9]  = joy2[10];               // start 3
-	in2[10] = joy3[10];               // start 4
+	in2[7]  = sys2[1];                // coin 3
+	in2[8]  = sys3[1];                // coin 4
+	in2[9]  = sys2[0];                // start 3
+	in2[10] = sys3[0];                // start 4
 
 	case (cfg_layout)
 		L_MK: begin
@@ -655,9 +664,9 @@ end
 reg  pause_toggle;
 reg  pause_btn_d;
 always @(posedge clk_sys) begin
-	pause_btn_d <= joy0[13] | joy1[13];
+	pause_btn_d <= sys0[3] | sys1[3];
 	if (reset) pause_toggle <= 1'b0;
-	else if ((joy0[13] | joy1[13]) & ~pause_btn_d) pause_toggle <= ~pause_toggle;
+	else if ((sys0[3] | sys1[3]) & ~pause_btn_d) pause_toggle <= ~pause_toggle;
 end
 
 wire pause = pause_toggle | (OSD_STATUS & ~status[8]);
