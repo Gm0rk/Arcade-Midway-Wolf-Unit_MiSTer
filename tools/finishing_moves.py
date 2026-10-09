@@ -482,7 +482,7 @@ WHERE = {
 MERCY_WHERE = {1: (160, 300), 2: (120, 300)}
 
 
-# the words for a distance (the OSD's labels; README "Finishing Moves")
+# the words for a distance (the OSD's labels; docs/Mortal-Kombat-3.md, docs/Ultimate-Mortal-Kombat-3.md "Finishing Moves")
 CLOSE, SWEEP, OUTSIDE, HALF = 90, 130, 165, 260
 
 
