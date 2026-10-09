@@ -7,6 +7,10 @@ An FPGA implementation of the Midway Wolf Unit arcade board (1994-1997), the
 TMS34010-based platform behind Mortal Kombat 3, Ultimate Mortal Kombat 3, WWF
 WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 
+> **Status:** the core is currently undergoing testing. It can be compiled and is playable in its
+> current state, but bugs are expected. Issues and pull requests are not
+> accepted at the moment.
+
 ## Contents
 
 - [Hardware](#hardware)
@@ -47,6 +51,9 @@ Each game's page in `docs/` has its controls and the features that only it
 has (hidden menus, Kombat Kodes, finishing moves).
 
 Verified on hardware: `[░░░░░░░░░░░░░░░░░░░░]` 0 / 7
+
+The [hardware test plan](docs/Testing.md) lists what each game has to pass
+before it counts as verified, with the results so far.
 
 The security chip is the development PIC every Wolf game accepts besides
 its own, so the serial number on the boot screen is not the one printed on
