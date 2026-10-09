@@ -429,6 +429,7 @@ FIRST_R = 103                   # status bits of the slots (R[103]-R[109])
 GROUP = "0789A"                 # menu mask bits: character / 5 (one-hot) ...
 INDEX = "BCDEF"                 # ... and character % 5; set = hide
 OLD_TABLE = "3"                 # set unless the MK3 1.x table (MK3 / UMK3 only)
+MOVE_LIST_BIT = "O[91]"          # the Move List window on/off
 
 # Where the winner must stand for each move (the distance between the
 # fighters' X positions in pixels when it is picked), as tools/lua/
@@ -538,11 +539,74 @@ def distance(table, c, s):
     return words(*w) if w else "?"
 
 
+# the moves' names on the OSD and the Move List window. The game does not
+# name its fatalities: these say what each one shows (the same animation in
+# both tables). Slots 2-5 go by the kind of move.
+FAT_NAMES = {
+    "Kano": ("Eye Laser", "Skeleton Rip"), "Sonya": ("Kiss of Death", "Bubble Crush"),
+    "Jax": ("Arm Blades", "Giant Stomp"), "Nightwolf": ("Spirit Light", "Axe Lightning"),
+    "Sub-Zero": ("Ice Breath", "Freeze Shatter"), "Stryker": ("Taser", "Time Bomb"),
+    "Sindel": ("Scream", "Hair Spin"), "Sektor": ("Compactor", "Flamethrower"),
+    "Cyrax": ("Self-Destruct", "Helicopter"), "Kung Lao": ("Tornado", "Hat Slice"),
+    "Kabal": ("Head Inflation", "Scary Face"), "Sheeva": ("Ground Pound", "Skin Rip"),
+    "Shang Tsung": ("Spike Bed", "Soul Steal"), "Liu Kang": ("Inferno", "Arcade Drop"),
+    "Smoke": ("Earth Bomb", "Bomb Swallow"), "Kitana": ("Fan Decap", "Kiss of Death"),
+    "Jade": ("Staff Shake", "Staff Impale"), "Mileena": ("Nail Spit", "Bone Spit"),
+    "Scorpion": ("Hell Clones", "Toasty"), "Reptile": ("Head Snack", "Acid Spit"),
+    "Ermac": ("TK Slam", "Head Punch"), "Classic Sub-Zero": ("Head Rip", None),
+    "Human Smoke": (None, "Head Punch"),
+}
+ANIMALS = {
+    "Kano": "Spider", "Sonya": "Hawk", "Jax": "Lion", "Nightwolf": "Wolf", "Sub-Zero": "Polar Bear",
+    "Stryker": "T-Rex", "Sindel": "Wasp", "Sektor": "Bat", "Cyrax": "Shark", "Kung Lao": "Leopard",
+    "Kabal": "Rhino", "Sheeva": "Scorpion", "Shang Tsung": "Cobra", "Liu Kang": "Dragon",
+    "Smoke": "Bull", "Kitana": "Rabbit", "Jade": "Cat", "Mileena": "Skunk", "Scorpion": "Penguin",
+    "Reptile": "Monkey",
+}
+KINDS = {2: "Stage", 3: "Animality", 4: "Friendship", 5: "Babality", 6: "Mercy"}
+
+
+def notation(prog):
+    """a program as the player would enter it: taps in order; (X) holds X
+    through what follows, let go at the end; a comma lets go before the
+    rest, and +X after a tap there is what stays held; X+Y alone presses Y
+    with X held"""
+    toks = [t for t in prog.split() if not t.startswith(("w:", "t:"))]
+    out, held, i = [], [], 0
+    while i < len(toks):
+        t = toks[i]
+        if t.startswith("hold:"):
+            ks = t[5:].split("+")
+            # held for just one tap: D+RN
+            if len(ks) == 1 and i + 2 < len(toks) and toks[i + 2] == "rel:" + ks[0] and ":" not in toks[i + 1]:
+                out.append(ks[0] + "+" + toks[i + 1])
+                i += 3
+                continue
+            held += ks
+            out.append("(" + "+".join(ks) + ")")
+        elif t.startswith("rel:"):
+            ks = t[4:].split("+")
+            held = [k for k in held if k not in ks]
+            if i + 1 < len(toks):
+                out[-1] += ","
+        else:
+            # a tap after a comma with something still held: show it held
+            out.append(t + ("+" + "+".join(held) if held and out and out[-1].endswith(",") else ""))
+        i += 1
+    return " ".join(out)
+
+
+def move_name(programs, table, c, s):
+    if s in (0, 1):
+        n = FAT_NAMES[CHARS[c]][s]
+        if n:
+            return n
+        return "Fatality"
+    return KINDS[s]
+
+
 def label(programs, table, c, s):
-    name = SLOTS[s]
-    if s in (0, 1) and sum(1 for k in (0, 1) if (c, k) in programs[table]) == 1:
-        name = "Fatality"
-    return f"{name}: {distance(table, c, s)}"
+    return f"{move_name(programs, table, c, s)} {notation(programs[table][(c, s)])}"
 
 
 def vh(programs):
@@ -591,9 +655,10 @@ def vh(programs):
 
 def osd_lines(programs):
     """the OSD page's lines (CONF_STR strings)"""
-    L = ['"H2P9,Finishing Moves;",', '"P9-;",',
+    L = ['"H2P9,Move List / Finishing Moves;",', '"P9-;",',
          '"h6P9%s,Character,%s;",' % (OPT_BITS, ",".join(CHARS[c] for c in OPT_ORDER["mk3"])),
          '"H6P9%s,Character,%s;",' % (OPT_BITS, ",".join(CHARS[c] for c in OPT_ORDER["umk3"])),
+         '"P9%s,Move List,Off,On;",' % MOVE_LIST_BIT,
          '"P9-;",']
     for c in range(len(CHARS)):
         pre = f"H{GROUP[c // 5]}H{INDEX[c % 5]}"
@@ -608,12 +673,12 @@ def osd_lines(programs):
             if b:
                 L.append(f'"{pre}H{OLD_TABLE}P9R[{FIRST_R + s}],{b};",')
     L.append('"P9-;",')
-    m1, m2 = distance(1, -1, MERCY), distance(2, -1, MERCY)
+    m1, m2 = (label(programs, t, 0, MERCY) for t in (1, 2))
     if m1 == m2:
-        L.append(f'"P9R[{FIRST_R + MERCY}],Mercy: {m1};",')
+        L.append(f'"P9R[{FIRST_R + MERCY}],{m1};",')
     else:
-        L.append(f'"h{OLD_TABLE}P9R[{FIRST_R + MERCY}],Mercy: {m1};",')
-        L.append(f'"H{OLD_TABLE}P9R[{FIRST_R + MERCY}],Mercy: {m2};",')
+        L.append(f'"h{OLD_TABLE}P9R[{FIRST_R + MERCY}],{m1};",')
+        L.append(f'"H{OLD_TABLE}P9R[{FIRST_R + MERCY}],{m2};",')
     return L
 
 
@@ -660,7 +725,7 @@ def check_core():
     programs = core_programs()
     want = [re.sub(r'^"|",$', "", l) for l in osd_lines(programs)]
     top = open(TOP, encoding="utf-8").read()
-    have = re.findall(r'"([^"]*P9[^"]*)"', top)
+    have = re.findall(r'^\s*"([^"\n]*P9[^"\n]*)",\s*$', top, re.M)
     err = []
     if have != want:
         for a, b in zip(have + [""] * len(want), want + [""] * len(have)):

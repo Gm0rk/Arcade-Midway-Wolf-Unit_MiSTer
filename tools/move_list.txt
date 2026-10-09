@@ -1,0 +1,392 @@
+# move_list.txt - the special moves on the core's Move List window (MK3, UMK3)
+#
+# Taken from MAME's command.dat (Command List by Fabricio Coroquer, revised
+# and distributed by AntoPISA, version 0.273: entries mk3/mk3r20, mk3r10/
+# mk3p40, umk3), written in the core's notation:
+#   U D F B (and DF DB UF UB) the joystick, F toward the opponent; HP LP BL
+#   HK LK RN the buttons; A+B together; Hold X 2s: hold X two seconds, let
+#   go; (air): also in the air; Air: in the air only; (tap): tap the button
+#   fast; (2P): two-player games only
+# The finishing moves are not here: tools/finishing_moves.py reads them out
+# of the program ROMs. tools/move_list.py builds the window from both.
+#
+# [set Character] then one move a line: name, two or more spaces, input.
+# A line '- Name  input' is one of Shang Tsung's morphs.
+#
+# Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
+
+[umk3 Kano]
+Knife Throw               D B HP
+Knife Uppercut            D F HP
+Cannonball                Hold LK 2s
+Upward Cannonball         F D F HK
+Neck Choke                D F LP
+Air Throw                 Air: close BL
+
+[umk3 Sonya]
+Force Wave                D F LP
+Square Wave Punch         F B HP
+Leg Grab                  D+LP+BL
+Bicycle Kick              B B D HK
+
+[umk3 Jax]
+Missile                   B F HP
+Double Missile            F F B B HP
+Ground Smash              Hold LK 2s
+Dashing Pound             F F HK
+Gotcha Grab               F F LP (tap)
+Quad Slam                 Throw, tap HP
+Backbreaker               Air: close BL
+
+[umk3 Nightwolf]
+Arrow                     D B LP
+Hatchet Uppercut          D F HP
+Shadow Charge             F F LK
+Reflect Shield            B B B HK
+
+[umk3 Sub-Zero]
+Freeze                    D F LP
+Ice Shower                D F HP
+Front Ice Shower          D F B HP
+Behind Ice Shower         D B F HP
+Ice Clone                 D B LP (air)
+Slide                     B+LP+BL+LK
+
+[umk3 Stryker]
+High Grenade              D B HP
+Low Grenade               D B LP
+Gun Shot                  B F HP
+Baton Sweep               F B LP
+Baton Toss                F F HK
+
+[umk3 Sindel]
+Fireball                  F F LP
+Air Fireball              Air: D F LK
+Scream                    F F F HP
+Fly                       B B F HK
+Cancel the flight         BL
+
+[umk3 Sektor]
+Missile                   F F LP
+Homing Missile            F DF D DB B HP
+Teleport Punch            F F LK (air)
+
+[umk3 Cyrax]
+Close Grenade             Hold LK, B B HK
+Far Grenade               Hold LK, F F HK
+Net                       B B LK
+Teleport                  F D BL (air)
+Air Throw                 D F BL LP (foe in air)
+
+[umk3 Kung Lao]
+Hat Throw                 B F LP
+Spin Attack               F D F RN (tap)
+Teleport                  D U
+Torpedo Kick              Air: D+HK
+
+[umk3 Kabal]
+Eye Spark                 B B HP (air)
+Dash                      B F LK
+Ground Saw                B B B RN
+
+[umk3 Sheeva]
+Fireball                  D F HP
+Teleport Stomp            D U
+Ground Stomp              B D B HK
+
+[umk3 Shang Tsung]
+Single Flaming Skull      B B HP
+Double Flaming Skull      B B F HP
+Triple Flaming Skull      B B F F HP
+Volcanic Eruption         F B B LK
+- Cyrax                   BL BL BL
+- Jade                    F F D D BL
+- Jax                     F F D LP
+- Kabal                   LP BL HK
+- Kano                    B F BL
+- Kitana                  F D F RN
+- Kung Lao                RN RN BL RN
+- Liu Kang                F DF D DB B UB U UF F
+- Nightwolf               U U U
+- Reptile                 RN BL BL HK
+- Scorpion                D D F LP
+- Sektor                  D F B RN
+- Sheeva                  F D F LK
+- Sindel                  B D B LK
+- Sonya                   D+LP+BL+RN
+- Stryker                 F F F HK
+- Sub-Zero                F D F HP
+- Mileena                 RN BL HK
+- Ermac                   D D U
+- Classic Sub-Zero        BL BL RN RN
+
+[umk3 Liu Kang]
+High Fireball             F F HP (air)
+Low Fireball              F F LP
+Flying Kick               F F HK
+Bicycle Kick              Hold LK 2s
+
+[umk3 Smoke]
+Harpoon                   B B LP
+Teleport Punch            F F LK (air)
+Invisibility              U U RN
+Air Throw                 Air: close BL
+
+[umk3 Kitana]
+Fan Throw                 F F HP+LP (air)
+Fan Lift                  B B B HP
+Square Wave Punch         D B HP
+
+[umk3 Jade]
+Boomerang                 B F LP
+Upward Boomerang          B F HP
+Downward Boomerang        B F LK
+Projectile Invisibility   B F HK
+Returning Boomerang       B B F LP (2P)
+Shadow Kick               D F LK
+
+[umk3 Mileena]
+Sai Throw                 Hold HP 2s (air)
+Teleport Kick             F F LK
+Ground Roll               B B D HK
+
+[umk3 Scorpion]
+Spear                     B B LP
+Teleport Punch            D B HP (air)
+Air Throw                 Air: close BL
+
+[umk3 Reptile]
+Acid Spit                 F F HP
+Slow Forceball            B B HP+LP
+Fast Forceball            F F HP+LP
+Super Elbow               B F LK
+Slide                     B+LP+BL+LK
+Invisibility              U D HK
+
+[umk3 Ermac]
+Green Sphere              D B LP
+Fire Teleport Punch       D B HP (air)
+Soul Slam                 B D B HK
+
+[umk3 Classic Sub-Zero]
+Freeze                    D F LP
+Ground Freeze             D B LK
+Slide                     B+LP+BL+LK
+
+[umk3 Human Smoke]
+Spear                     B B LP
+Teleport Punch            D B HP (air)
+Air Throw                 Air: close BL
+
+[mk3 Kano]
+Knife Throw               D B HP
+Knife Uppercut            D F HP
+Cannonball                Hold LK 2s
+Neck Choke                D F LP
+Air Throw                 Air: close BL
+
+[mk3 Sonya]
+Force Wave                D F LP
+Square Wave Punch         F B HP
+Leg Grab                  D+LP+BL
+Bicycle Kick              B B D HK
+
+[mk3 Jax]
+Missile                   B F HP
+Double Missile            F F B B HP
+Ground Smash              Hold LK 2s
+Dashing Pound             F F HK
+Gotcha Grab               F F LP (tap)
+Quad Slam                 Throw, tap HP
+Backbreaker               Air: close BL
+
+[mk3 Nightwolf]
+Arrow                     D B LP
+Hatchet Uppercut          D F HP
+Shadow Charge             F F LK
+Reflect Shield            B B B HK
+
+[mk3 Sub-Zero]
+Freeze                    D F LP
+Ice Shower                D F HP
+Front Ice Shower          D F B HP
+Behind Ice Shower         D B F HP
+Ice Clone                 D B LP (air)
+Slide                     B+LP+BL+LK
+
+[mk3 Stryker]
+High Grenade              D B HP
+Low Grenade               D B LP
+Baton Sweep               F B LP
+Baton Toss                F F HK
+
+[mk3 Sindel]
+Fireball                  F F LP
+Air Fireball              Air: D F LK
+Scream                    F F F HP
+Fly                       B B F HK
+Cancel the flight         BL
+
+[mk3 Sektor]
+Missile                   F F LP
+Homing Missile            F DF D DB B HP
+Teleport Punch            F F LK (air)
+
+[mk3 Cyrax]
+Close Grenade             Hold LK, B B HK
+Far Grenade               Hold LK, F F HK
+Net                       B B LK
+Teleport                  F D BL (air)
+Air Throw                 D F BL LP (foe in air)
+
+[mk3 Kung Lao]
+Hat Throw                 B F LP
+Spin Attack               F D F RN (tap)
+Teleport                  D U
+Torpedo Kick              Air: D+HK
+
+[mk3 Kabal]
+Eye Spark                 B B HP (air)
+Dash                      B F LK
+Ground Saw                B B B RN
+
+[mk3 Sheeva]
+Fireball                  D F HP
+Teleport Stomp            D U
+Ground Stomp              B D B HK
+
+[mk3 Shang Tsung]
+Single Flaming Skull      B B HP
+Double Flaming Skull      B B F HP
+Triple Flaming Skull      B B F F HP
+Volcanic Eruption         F B B LK
+- Cyrax                   BL BL BL
+- Jax                     F F D LP
+- Kabal                   LP BL HK
+- Kano                    B F BL
+- Kung Lao                RN RN BL RN
+- Liu Kang                F DF D DB B UB U UF F
+- Nightwolf               U U U
+- Sektor                  D F B RN
+- Sheeva                  F D F LK
+- Sindel                  B D B LK
+- Sonya                   D+LP+BL+RN
+- Stryker                 F F F HK
+- Sub-Zero                F D F HP
+
+[mk3 Liu Kang]
+High Fireball             F F HP (air)
+Low Fireball              F F LP
+Flying Kick               F F HK
+Bicycle Kick              Hold LK 2s
+
+[mk3 Smoke]
+Harpoon                   B B LP
+Teleport Punch            F F LK (air)
+Invisibility              U U RN
+Air Throw                 Air: close BL
+
+[mk3r10 Kano]
+Knife Throw               D B HP
+Knife Uppercut            D F HP
+Cannonball                Hold LK 2s
+Air Throw                 Air: close BL
+
+[mk3r10 Sonya]
+Force Wave                D F LP
+Square Wave Punch         F B HP
+Leg Grab                  D+LP+BL
+Bicycle Kick              B B D HK
+
+[mk3r10 Jax]
+Missile                   B F HP
+Double Missile            F F B B HP
+Ground Smash              Hold LK 2s
+Dashing Pound             F F HK
+Gotcha Grab               F F LP (tap)
+Quad Slam                 Throw, tap HP
+Backbreaker               Air: close BL
+
+[mk3r10 Nightwolf]
+Arrow                     D B LP
+Hatchet Uppercut          D F HP
+Shadow Charge             F F LK
+Reflect Shield            B B B HK
+
+[mk3r10 Sub-Zero]
+Freeze                    D F LP
+Ice Shower                D F HP
+Front Ice Shower          D F B HP
+Behind Ice Shower         D B F HP
+Ice Clone                 D B LP (air)
+Slide                     B+LP+BL+LK
+
+[mk3r10 Stryker]
+High Grenade              D B HP
+Low Grenade               D B LP
+Baton Sweep               F B LP
+Baton Toss                F F HK
+
+[mk3r10 Sindel]
+Fireball                  F F LP
+Air Fireball              Air: D F LK
+Scream                    F F F HP
+Fly                       B B F HK
+Cancel the flight         BL
+
+[mk3r10 Sektor]
+Missile                   F F LP
+Homing Missile            F DF D DB B HP
+Teleport Punch            F F LK (air)
+
+[mk3r10 Cyrax]
+Close Grenade             Hold LK, B B HK
+Far Grenade               Hold LK, F F HK
+Net                       B B LK
+Teleport                  F D BL (air)
+Air Throw                 D F BL LP (foe in air)
+
+[mk3r10 Kung Lao]
+Hat Throw                 B F LP
+Spin Attack               F D F RN (tap)
+Teleport                  D U
+Torpedo Kick              Air: D+HK
+
+[mk3r10 Kabal]
+Eye Spark                 B B HP (air)
+Dash                      B F LK
+Ground Saw                B B B RN
+
+[mk3r10 Sheeva]
+Fireball                  D F HP
+Teleport Stomp            D U
+Ground Stomp              B D B HK
+
+[mk3r10 Shang Tsung]
+Single Flaming Skull      B B HP
+Double Flaming Skull      B B F HP
+Triple Flaming Skull      B B F F HP
+Volcanic Eruption         F B B LK
+- Cyrax                   BL BL BL
+- Jax                     F F D LP
+- Kabal                   LP BL HK
+- Kano                    B F BL
+- Kung Lao                RN RN BL RN
+- Liu Kang                F DF D DB B UB U UF F
+- Nightwolf               U U U
+- Sektor                  D F B RN
+- Sheeva                  F D F LK
+- Sindel                  B D B LK
+- Sonya                   D+LP+BL+RN
+- Stryker                 F F F HK
+- Sub-Zero                F D F HP
+
+[mk3r10 Liu Kang]
+High Fireball             F F HP (air)
+Low Fireball              F F LP
+Flying Kick               F F HK
+Bicycle Kick              Hold LK 2s
+
+[mk3r10 Smoke]
+Harpoon                   B B LP
+Invisibility              U U RN
