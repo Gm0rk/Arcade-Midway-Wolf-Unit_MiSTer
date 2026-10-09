@@ -12,6 +12,7 @@ Endings.
 - [EJB Character Endings](#ejb-character-endings)
 - [Kombat Kodes](#kombat-kodes)
 - [Ultimate Kombat Kodes](#ultimate-kombat-kodes)
+- [Move List](#move-list)
 - [Finishing Moves](#finishing-moves)
 
 ## Controls
@@ -96,16 +97,47 @@ the game stops asking, and a kode picked then just waits.
 | 12344-44321 | Ermac |
 | 81835-81835 | Classic Sub-Zero |
 
+## Move List
+
+OSD page "Move List / Finishing Moves": choose the fighter under
+"Character" and turn "Move List" on. The core shows that fighter's moves
+over the game, which waits while the window is up; turn it off in the OSD
+to play on. Changing the Character with the window on shows the new
+fighter's moves. The window lists:
+
+- Special moves (with Shang Tsung's morphs), from MAME's command list
+- Finishing moves: name, input and how far to stand (see Distances
+  below), the Mercy last
+
+All 23 fighters have a page, the hidden ones too.
+
+How the inputs read (the window and the OSD lines alike):
+
+| Notation | Meaning |
+|---|---|
+| F B U D | the joystick, F toward the opponent (DF, DB, UF, UB: diagonals) |
+| HP LP HK LK BL RN | High / Low Punch, High / Low Kick, Block, Run |
+| `D F HP` | one after the other |
+| `A+B` | together: `D+RN` is Run with Down held |
+| `(X) ...` | hold X through what follows, let go at the end: `(LP) F D D F` is hold Low Punch, F D D F, let go |
+| `(X) ..., Y` | let go of X, then Y; `Y+X` after the comma: X is still held |
+| Hold LK 2s | hold for two seconds, let go |
+| (air) / Air: | also in the air / in the air only |
+| (tap) | tap the button fast |
+| (2P) | in two-player games only |
+
 ## Finishing Moves
 
-The OSD page "Finishing Moves" enters finishing moves for you. Choose the
-fighter under "Character"; the page then lists that fighter's moves
-(Fatality 1 and 2, Stage Fatality, Animality, Friendship, Babality: the
-ones it has) with where to stand, and the Mercy every fighter shares.
+The same page enters finishing moves for you. Its lines, below Character,
+list that fighter's moves (Fatality 1 and 2, Stage Fatality, Animality,
+Friendship, Babality: the ones it has), each by name and input, and the
+Mercy every fighter shares. The game does not name its fatalities; the
+names here say what each one shows. The Move List window has where to
+stand for each.
 
-At FINISH HIM, stand at the distance the line gives, open the OSD and pick
-the move: the core enters it on the winner's controls, player 1 or 2,
-turned to the side the winner faces. With "Pause when OSD is open" on (the
+At FINISH HIM, stand at the distance the Move List gives, open the OSD
+and pick the move: the core enters it on the winner's controls, player 1
+or 2, turned to the side the winner faces. With "Pause when OSD is open" on (the
 default) FINISH HIM waits while you choose. The fighter must be the
 winner's (a message says so if not), and the game's own rules still apply:
 
@@ -119,7 +151,8 @@ winner's (a message says so if not), and the game's own rules still apply:
 - Kabal's Fatality 1 also needs room behind the opponent (not at the edge
   of the screen)
 
-Distances (between the fighters, the screen is 400 pixels wide):
+Distances (the Move List's Distance column; between the fighters, the
+screen is 400 pixels wide):
 
 | Word | Where the winner stands |
 |---|---|
