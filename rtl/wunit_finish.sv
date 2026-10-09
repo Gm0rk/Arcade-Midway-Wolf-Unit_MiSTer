@@ -71,6 +71,7 @@ module wunit_finish
 	output reg [15:0] menu,          // OSD menu mask bits (set: hide): 0, 7-15 the
 	                                 // character (0 7 8 9 A: its number / 5, B-F: % 5),
 	                                 // 3 clear for the MK3 1.x table
+	output      [4:0] char_id,       // the picked character, the game's number
 	output            busy
 );
 
@@ -152,6 +153,7 @@ reg  [15:0] step;                   // [12:10] unused
 // the picked character, and the OSD lines to show for it: the menu mask
 // bit of its number / 5 (0 7 8 9 A) and of its number % 5 (B-F) clear
 wire  [4:0] sel_char = opt_char(umk3, opt);
+assign      char_id  = sel_char;
 /* verilator lint_off UNUSEDSIGNAL */
 wire  [4:0] grp5 = sel_char / 5'd5;  // 0-4
 wire  [4:0] ind5 = sel_char % 5'd5;
