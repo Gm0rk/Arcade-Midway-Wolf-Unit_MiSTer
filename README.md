@@ -72,6 +72,8 @@ the original board.
 - Game extras entered from the OSD: hidden developer menus (MK3, UMK3, NBA
   Hangtime), UMK3's cut Character Endings restored, Kombat Kodes and
   finishing moves (MK3, UMK3); see each game's page
+- Move List (MK3, UMK3): every fighter's special moves and finishing moves,
+  shown over the game from the OSD
 
 ## CRT Adjust
 
@@ -129,6 +131,9 @@ A 32 MB SDRAM module is needed (the largest games use 25 MB of ROM).
 - SDRAM controller and MiSTer framework: Sorgelig and the MiSTer-devel team
 - CRT Adjust and CRT V-Size: Umberto Parisi (rmonic79), with Andrea Bogazzi
   (@asturur)
+- Move List special moves: MAME's command.dat (Command List by Fabricio
+  Coroquer, revised by AntoPISA); window font: the MiSTer OSD's
+  (Main_MiSTer)
 - [Template_MiSTer](https://github.com/MiSTer-devel/Template_MiSTer),
   [MiSTer-CRT-Adjust](https://github.com/rmonic79/MiSTer-CRT-Adjust)
 
