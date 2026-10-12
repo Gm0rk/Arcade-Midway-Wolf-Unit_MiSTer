@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Mortal Kombat 3 (rev 2.1)</name>
-	<mratimestamp>20261007</mratimestamp>
+	<mratimestamp>20261011</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>mk3</setname>
 	<year>1994</year>
@@ -8,18 +8,7 @@
 	<category>Fighter / Versus</category>
 	<rbf>Arcade-Midway-Wolf-Unit</rbf>
 	<remark>2 players</remark>
-	<switches default="7D,FD">
-		<dip bits="0" name="Test Switch" ids="Off,On" values="1,0"/>
-		<dip bits="1" name="Counters" ids="One,Two" values="1,0"/>
-		<dip bits="2,6" name="Coinage" ids="USA-1,USA-2,USA-3,USA-4,USA-ECA,USA-Free Play,German-1,German-2,German-3,German-4,German-5,German-ECA,German-Free Play,French-1,French-2,French-3,French-4,French-ECA,French-Free Play" values="31,15,23,7,27,3,29,13,21,5,25,9,1,30,14,22,6,26,2"/>
-		<dip bits="7" name="Coinage Source" ids="Dipswitch,CMOS" values="1,0"/>
-		<dip bits="9" name="Powerup Test" ids="Off,On"/>
-		<dip bits="10" name="Bill Validator" ids="Off,On" values="1,0"/>
-		<dip bits="12" name="Attract Sound" ids="Off,On"/>
-		<dip bits="14" name="Blood" ids="Off,On"/>
-		<dip bits="15" name="Violence" ids="Off,On"/>
-	</switches>
-	<buttons names="High Punch,Block,High Kick,Low Punch,Low Kick,Run,Start,Coin,Test,Pause" default="Y,R,X,B,A,L,Start,Select,-,-"/>
+	<buttons names="High Punch,Low Punch,High Kick,Low Kick,Block,Run,Start,Coin,Test,Pause" default="Y,B,X,A,R,L,Start,Select,-,-"/>
 	<romstruct>
 0x000000 program ROM (1 MB, 16-bit little endian)
 0x100000 DCS sound ROMs (4 x 1 MB, MAME region bytes 0, 2, 4, ...)
