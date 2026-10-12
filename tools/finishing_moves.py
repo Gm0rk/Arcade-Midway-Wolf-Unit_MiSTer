@@ -425,11 +425,17 @@ OPT_ORDER = {
     "umk3": sorted(range(23), key=lambda c: CHARS[c]),
 }
 OPT_BITS = "O[72:68]"           # the character option
-FIRST_R = 103                   # status bits of the slots (R[103]-R[109])
+FIRST_BIT = 57                  # status bits of the slots, 57-63: triggers rP-rV
 GROUP = "0789A"                 # menu mask bits: character / 5 (one-hot) ...
 INDEX = "BCDEF"                 # ... and character % 5; set = hide
 OLD_TABLE = "3"                 # set unless the MK3 1.x table (MK3 / UMK3 only)
-MOVE_LIST_BIT = "O[91]"          # the Move List window on/off
+MOVE_LIST_BITS = "O[117:113]"   # the Move List window: Off, then the OSD's characters
+
+
+def trigger(s):
+    """a slot's trigger: r and status bit - 32 in MiSTer's one-character
+    form (0-9, A-V), the short way to write bits 32-63"""
+    return "r" + "0123456789ABCDEFGHIJKLMNOPQRSTUV"[FIRST_BIT - 32 + s]
 
 # Where the winner must stand for each move (the distance between the
 # fighters' X positions in pixels when it is picked), as tools/lua/
@@ -653,33 +659,132 @@ def vh(programs):
     return "\n".join(L)
 
 
+def move_list_lines():
+    """the main page's Move List option (CONF_STR strings): Off, then the
+    characters in the OSD's order (tools/move_list.py lays out the pages
+    in it)"""
+    return ['"H6%s,Move List,Off,%s;",' % (MOVE_LIST_BITS, ",".join(CHARS[c] for c in OPT_ORDER["umk3"])),
+            '"h6H2%s,Move List,Off,%s;",' % (MOVE_LIST_BITS, ",".join(CHARS[c] for c in OPT_ORDER["mk3"]))]
+
+
+def visible_set(masks):
+    """the characters (0-24) a line with these masks is shown for: masks
+    (kind, bit), kind H (hidden while the bit is set: the character is in
+    that group / has that index) or h (the opposite)"""
+    out = set()
+    for c in range(25):
+        bits = {GROUP[c // 5]: 0, INDEX[c % 5]: 0}          # cleared for the picked one
+        ok = True
+        for kind, b in masks:
+            v = bits.get(b, 1)
+            if (kind == "H" and v) or (kind == "h" and not v):
+                ok = False
+        if ok:
+            out.add(c)
+    return out
+
+
+def mask_options():
+    """the character masks a shared line can carry (at most two a side),
+    cheapest first: [(masks, characters)]"""
+    side = lambda bits: [[]] + [[("H", b)] for b in bits] + [[("h", b)] for b in bits] + \
+        [[("h", a), ("h", b)] for k, a in enumerate(bits) for b in bits[k + 1:]]
+    opts = []
+    for g in side(GROUP):
+        for x in side(INDEX):
+            opts.append((g + x, visible_set(g + x)))
+    return sorted(opts, key=lambda o: len(o[0]))
+
+
+def cover(chars, relevant):
+    """mask sets whose lines show for exactly the characters in chars among
+    the relevant ones (others: do not care), few and cheap"""
+    left, out = set(chars), []
+    while left:
+        # lines that show for none but the characters still to cover
+        opts = [(m, v) for m, v in mask_options() if not (v & relevant) - left]
+        m, v = max(opts, key=lambda o: (len(o[1] & left), -len(o[0])))
+        out.append(m)
+        left -= v
+    return out
+
+
 def osd_lines(programs):
-    """the OSD page's lines (CONF_STR strings)"""
-    L = ['"H2P9,Move List / Finishing Moves;",', '"P9-;",',
+    """the OSD page's lines (CONF_STR strings). Below Character, slot by
+    slot, each move line shows for the characters that have it: one line
+    a character (its group and index masks), or one line for several with
+    the same move (MK3 1.x's Stage Fatality)"""
+    L = ['"H2P9,Finishing Moves;",', '"P9-;",',
          '"h6P9%s,Character,%s;",' % (OPT_BITS, ",".join(CHARS[c] for c in OPT_ORDER["mk3"])),
          '"H6P9%s,Character,%s;",' % (OPT_BITS, ",".join(CHARS[c] for c in OPT_ORDER["umk3"])),
-         '"P9%s,Move List,Off,On;",' % MOVE_LIST_BIT,
          '"P9-;",']
-    for c in range(len(CHARS)):
-        pre = f"H{GROUP[c // 5]}H{INDEX[c % 5]}"
-        for s in range(MERCY):
+    for s in range(MERCY):
+        groups = {}                     # (table mask, label) -> characters, in order
+        for c in range(len(CHARS)):
             a = (c, s) in programs[1] and label(programs, 1, c, s)
             b = (c, s) in programs[2] and label(programs, 2, c, s)
             if a and a == b:
-                L.append(f'"{pre}P9R[{FIRST_R + s}],{a};",')
+                groups.setdefault(("", a), []).append(c)
                 continue
             if a:
-                L.append(f'"{pre}{"h" + OLD_TABLE if c < 15 else ""}P9R[{FIRST_R + s}],{a};",')
+                groups.setdefault(("h" + OLD_TABLE if c < 15 else "", a), []).append(c)
             if b:
-                L.append(f'"{pre}H{OLD_TABLE}P9R[{FIRST_R + s}],{b};",')
+                groups.setdefault(("H" + OLD_TABLE, b), []).append(c)
+        for (tm, text), chars in groups.items():
+            # the characters a line can be seen with: all with table 1 (UMK3
+            # has 23), the first 15 with table 2 (MK3 1.x)
+            relevant = set(range(15)) if tm == "H" + OLD_TABLE else set(range(len(CHARS)))
+            if len(chars) == 1:
+                masks = [[("H", GROUP[chars[0] // 5]), ("H", INDEX[chars[0] % 5])]]
+            else:
+                masks = cover(chars, relevant)
+            for m in masks:
+                pre = "".join(k + b for k, b in m)
+                L.append(f'"{pre}{tm}P9{trigger(s)},{text};",')
     L.append('"P9-;",')
     m1, m2 = (label(programs, t, 0, MERCY) for t in (1, 2))
     if m1 == m2:
-        L.append(f'"P9R[{FIRST_R + MERCY}],{m1};",')
+        L.append(f'"P9{trigger(MERCY)},{m1};",')
     else:
-        L.append(f'"h{OLD_TABLE}P9R[{FIRST_R + MERCY}],{m1};",')
-        L.append(f'"H{OLD_TABLE}P9R[{FIRST_R + MERCY}],{m2};",')
+        L.append(f'"h{OLD_TABLE}P9{trigger(MERCY)},{m1};",')
+        L.append(f'"H{OLD_TABLE}P9{trigger(MERCY)},{m2};",')
     return L
+
+
+def page_for(lines, c, table):
+    """the move lines the OSD shows for character c with the MRA's table
+    (1: UMK3 / MK3 2.x, 2: MK3 1.x): [(slot, label)], by Main_MiSTer's mask
+    rules (bit set: H hides, h shows)"""
+    bits = {b: 1 for b in "0123456789ABCDEF"}
+    bits[GROUP[c // 5]] = 0
+    bits[INDEX[c % 5]] = 0
+    bits[OLD_TABLE] = 0 if table == 2 else 1
+    out = []
+    for l in lines:
+        m = re.match(r'"((?:[Hh][0-9A-F])*)P9(r[0-9A-V]),(.*);",$', l)
+        if not m:
+            continue
+        masks = re.findall(r"([Hh])([0-9A-F])", m.group(1))
+        if any((k == "H" and bits[b]) or (k == "h" and not bits[b]) for k, b in masks):
+            continue
+        out.append(("0123456789ABCDEFGHIJKLMNOPQRSTUV".index(m.group(2)[1]) + 32 - FIRST_BIT, m.group(3)))
+    return out
+
+
+def check_pages(programs):
+    """every character's page, with each table, against its moves"""
+    lines = osd_lines(programs)
+    err = []
+    for table, n in ((1, len(CHARS)), (2, 15)):
+        for c in range(n):
+            want = [(s, label(programs, table, c, s)) for s in range(MERCY) if (c, s) in programs[table]]
+            want.append((MERCY, label(programs, table, 0, MERCY)))      # one line for all
+            if table == 2 and c >= 15:
+                continue
+            have = page_for(lines, c, table)
+            if have != want:
+                err.append(f"table {table} {CHARS[c]}: page {have}, moves {want}")
+    return err
 
 
 def core_programs():
@@ -721,12 +826,18 @@ def config(family, rom_bytes):
 
 
 def check_core():
-    """the OSD page in the top level against the programs and WHERE"""
+    """the OSD page and the Move List option in the top level against the
+    programs and WHERE"""
     programs = core_programs()
     want = [re.sub(r'^"|",$', "", l) for l in osd_lines(programs)]
     top = open(TOP, encoding="utf-8").read()
     have = re.findall(r'^\s*"([^"\n]*P9[^"\n]*)",\s*$', top, re.M)
     err = []
+    err += check_pages(programs)
+    ml_want = [re.sub(r'^"|",$', "", l) for l in move_list_lines()]
+    ml_have = re.findall(r'^\s*"([^"\n]*,Move List,[^"\n]*)",\s*$', top, re.M)
+    if ml_have != ml_want:
+        err.append(f"Move List option lines {ml_have!r}, expected {ml_want!r}")
     if have != want:
         for a, b in zip(have + [""] * len(want), want + [""] * len(have)):
             if a != b:
@@ -830,7 +941,7 @@ def main():
     if a[:1] == ["--write"] and len(a) == 3:
         programs = {1: rom_moves(open(a[1], "rb").read(), "umk3"), 2: rom_moves(open(a[2], "rb").read(), "mk3")}
         open(VH, "w").write(vh(programs))
-        print("\n".join("\t" + l for l in osd_lines(programs)))
+        print("\n".join("\t" + l for l in move_list_lines() + osd_lines(programs)))
         return
     if a == ["--check"]:
         err = check_core()
