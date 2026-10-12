@@ -147,18 +147,21 @@ output line (dots, a hash of them, first and last dot); built with
 `-DNO_VSIZE` the testbench drives a stage without the V-Size ports, so two
 builds of the stage can be compared line for line.
 
-## `movelist/` - the Move List window
+## `movelist/` - the Move List and Secret Codes windows
 
 `tb_movelist.cpp` runs `rtl/wunit_movelist.sv` on its own with the Wolf
 Unit raster (as `crt/`, the board's outputs changing with each dot) and a
-test picture, and writes the picture that goes out to a PPM file.
-`check.py` runs it for every page and compares each dot with the page as
-`tools/move_list.py` lays it out (the test picture dimmed, the characters
-in the OSD font on the grid), and once with the window off, where the
-picture must come out unchanged.
+test picture, and writes the picture that goes out to a PPM file
+(`-logo N`: over logo N, 1-5: MK3, UMK3, Open Ice, NBA Hangtime, Maximum
+Hangtime). `check.py` runs it for every page, each over its game's logo
+(the Hangtime page shown without the version's MRA over the dimmed
+picture), and compares each dot with the page as
+`tools/move_list.py` lays it out (the logo from its ROM images or the test
+picture dimmed, the characters in the OSD font on the grid), and with the
+window off, where the picture must come out unchanged.
 
 ```
 make -C sim/movelist
 python3 sim/movelist/check.py              # every page
-sim/movelist/obj_dir/Vwunit_movelist 12 shang.ppm
+sim/movelist/obj_dir/Vwunit_movelist 12 umk3.ppm -logo 2
 ```
