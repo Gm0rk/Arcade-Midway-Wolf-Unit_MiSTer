@@ -55,6 +55,14 @@ assign BUTTONS   = 0;
 //////////////////////////////////////////////////////////////////
 
 `include "build_id.v"
+// The main page of every game: Video Settings (P1); the game's own items
+// (MK3 / UMK3, lines H2: Kombat Kodes with its category pages P3-P7, Move
+// List, Finishing Moves P9; the Hangtimes and Open Ice: Secret Codes);
+// DIP Switches (P2: each game's switches, Service Credit, Tilt); Secret
+// Menu (MK3 / UMK3, P8) or Secret Midway Menu (Hangtimes); Service Mode;
+// Pause when OSD is Open; Reset and Reset and close OSD. See
+// status_menumask for the mask bits. The framework reads at most 10,239
+// bytes of this string and has pages 1-9 only.
 localparam CONF_STR = {
 	"A.MIDWAYW;;",
 	"-;",
@@ -72,256 +80,269 @@ localparam CONF_STR = {
 	"H1P1O[78:74],CRT V-Shift,0,+1,+2,+3,+4,+5,+6,+7,+8,+9,+10,+11,+12,+13,+14,+15,-16,-15,-14,-13,-12,-11,-10,-9,-8,-7,-6,-5,-4,-3,-2,-1;",
 	"H1P1O[89:86],CRT V-Size,0,+1,+2,+3,+4,+5,+6,+7,-7,-6,-5,-4,-3,-2,-1;",
 	"H1P1O[90],CRT V-Size Mode,PVM,Cabinet;",
-	"P2,Controls;",
-	"P2-;",
-	"P2O[9],Service Mode,Off,On;",
-	"P2T[12],Service Credit;",
-	"P2T[13],Tilt;",
-	"H5-;",
-	"H2R[16],Open EJB Menu (attract mode);",
-	"h2H3R[16],Open Secret Midway Menu;",
-	"H4O[17],EJB Character Endings,Off,On;",
+	"-;",
+	// MK3 / UMK3: Kombat Kodes (P3, categories P4-P7), Move List, Finishing Moves (P9)
 	"H2P3,Kombat Kodes;",
 	"P3-;",
 	"P3P4,Fight;",
 	"P3P5,Round 1 Winner Battles;",
 	"H6P3P6,Kombat Zone;",
 	"P3P7,Messages;",
-	"P3P8,Ultimate Kombat Kodes;",
 	"P4-;",
-	"P4R[18],Throwing Disabled 100-100;",
-	"P4R[19],Blocking Disabled 020-020;",
-	"P4R[20],No Powerbars 987-123;",
-	"P4R[21],Unlimited Run 466-466;",
-	"P4R[22],Dark Kombat 688-422;",
-	"P4R[23],Randper Kombat 460-460;",
-	"P4R[24],Psycho Kombat 985-125;",
-	"P4R[25],P1 Half Power 033-000;",
-	"P4R[26],P2 Half Power 000-033;",
-	"P4R[27],P1 Quarter Power 707-000;",
-	"P4R[28],P2 Quarter Power 000-707;",
-	"H6P4R[29],Sans Power 044-440;",
-	"H6P4R[30],Uppercut Recovery 788-322;",
-	"H6P4R[31],Throwing Encouraged 010-010;",
-	"H6P4R[32],Silent Kombat 300-300;",
-	"H6P4R[33],Explosive Kombat 227-227;",
-	"H6P4R[34],Explosive No Throws 022-220;",
-	"P4R[35],Galaga 642-468;",
+	"P4RI,Throwing Disabled 100-100;",
+	"P4RJ,Blocking Disabled 020-020;",
+	"P4RK,No Powerbars 987-123;",
+	"P4RL,Unlimited Run 466-466;",
+	"P4RM,Dark Kombat 688-422;",
+	"P4RN,Randper Kombat 460-460;",
+	"P4RO,Psycho Kombat 985-125;",
+	"P4RP,P1 Half Power 033-000;",
+	"P4RQ,P2 Half Power 000-033;",
+	"P4RR,P1 Quarter Power 707-000;",
+	"P4RS,P2 Quarter Power 000-707;",
+	"H6P4RT,Sans Power 044-440;",
+	"H6P4RU,Uppercut Recovery 788-322;",
+	"H6P4RV,Throwing Encouraged 010-010;",
+	"H6P4r0,Silent Kombat 300-300;",
+	"H6P4r1,Explosive Kombat 227-227;",
+	"H6P4r2,Explosive No Throws 022-220;",
+	"P4r3,Galaga 642-468;",
 	"P5-;",
-	"P5R[36],Motaro 969-141;",
-	"P5R[37],Shao Kahn 033-564;",
-	"P5R[38],Noob Saibot 769-342;",
-	"P5R[39],Smoke 205-205;",
+	"P5r4,Motaro 969-141;",
+	"P5r5,Shao Kahn 033-564;",
+	"P5r6,Noob Saibot 769-342;",
+	"P5r7,Smoke 205-205;",
 	"P6-;",
-	"H6P6R[40],Subway 880-088;",
-	"H6P6R[41],Street 079-035;",
-	"H6P6R[42],Rooftop 343-343;",
-	"H6P6R[43],Kahn's Tower 880-220;",
-	"H6P6R[44],The Bridge 077-022;",
-	"H6P6R[45],Soul Chamber 123-901;",
-	"H6P6R[46],Bell Tower 091-190;",
-	"H6P6R[47],Kombat Temple 600-040;",
-	"H6P6R[48],The Graveyard 666-333;",
-	"H6P6R[49],The Pit 3 820-028;",
-	"H6P6R[50],River Kombat 002-003;",
-	"H6P6R[51],Scorpion's Lair 666-444;",
-	"H6P6R[52],Kahn's Kave 004-700;",
-	"H6P6R[53],Jade's Desert 330-033;",
-	"H6P6R[54],Scislac Busorez 933-933;",
-	"H6P6R[55],Noob Saibot Dorfen 050-050;",
+	"H6P6r8,Subway 880-088;",
+	"H6P6r9,Street 079-035;",
+	"H6P6rA,Rooftop 343-343;",
+	"H6P6rB,Kahn's Tower 880-220;",
+	"H6P6rC,The Bridge 077-022;",
+	"H6P6rD,Soul Chamber 123-901;",
+	"H6P6rE,Bell Tower 091-190;",
+	"H6P6rF,Kombat Temple 600-040;",
+	"H6P6rG,The Graveyard 666-333;",
+	"H6P6rH,The Pit 3 820-028;",
+	"H6P6rI,River Kombat 002-003;",
+	"H6P6rJ,Scorpion's Lair 666-444;",
+	"H6P6rK,Kahn's Kave 004-700;",
+	"H6P6rL,Jade's Desert 330-033;",
+	"H6P6rM,Scislac Busorez 933-933;",
+	"H6P6rN,Noob Saibot Dorfen 050-050;",
 	"P7-;",
-	"P7R[56],Hold Flippers 987-666;",
-	"P7R[57],No Fear 282-282;",
-	"P7R[58],No Knowledge 123-926;",
-	"H6P7R[59],Revision 999-999;",
-	"H6P7R[60],MK Live Tour 550-550;",
-	"H6P7R[61],Rain Can Be Found 717-313;",
-	"H6P7R[62],Don't Jump At Me 448-844;",
-	"H6P7R[63],Skunky !! 122-221;",
+	"P7rO,Hold Flippers 987-666;",
+	"P7R[103],No Fear 282-282;",
+	"P7R[104],No Knowledge 123-926;",
+	"H6P7R[105],Revision 999-999;",
+	"H6P7R[106],MK Live Tour 550-550;",
+	"H6P7R[107],Rain Can Be Found 717-313;",
+	"H6P7R[108],Don't Jump At Me 448-844;",
+	"H6P7R[109],Skunky !! 122-221;",
 	"H6P7R[64],Whatcha Gun Do ? 004-400;",
-	"P8-;",
-	"H6P8R[65],Mileena 22264-22264;",
-	"H6P8R[66],Ermac 12344-44321;",
-	"H6P8R[67],Classic Sub-Zero 81835-81835;",
-	"h6P8R[73],Smoke 10902-22234;",
+	"P3-;",
+	"P3-,Ultimate Kombat Kodes;",
+	"H6P3R[65], Mileena 22264-22264;",
+	"H6P3R[66], Ermac 12344-44321;",
+	"H6P3R[67], Classic Sub-Zero 81835-81835;",
+	"h6P3R[73], Smoke 10902-22234;",
 	// Move List / Finishing Moves: tools/finishing_moves.py --write prints these lines
-	"H2P9,Move List / Finishing Moves;",
+	"H6O[117:113],Move List,Off,Classic Sub-Zero,Cyrax,Ermac,Human Smoke,Jade,Jax,Kabal,Kano,Kitana,Kung Lao,Liu Kang,Mileena,Nightwolf,Reptile,Scorpion,Sektor,Shang Tsung,Sheeva,Sindel,Smoke,Sonya,Stryker,Sub-Zero;",
+	"h6H2O[117:113],Move List,Off,Cyrax,Jax,Kabal,Kano,Kung Lao,Liu Kang,Nightwolf,Sektor,Shang Tsung,Sheeva,Sindel,Smoke,Sonya,Stryker,Sub-Zero;",
+	"H2P9,Finishing Moves;",
 	"P9-;",
 	"h6P9O[72:68],Character,Cyrax,Jax,Kabal,Kano,Kung Lao,Liu Kang,Nightwolf,Sektor,Shang Tsung,Sheeva,Sindel,Smoke,Sonya,Stryker,Sub-Zero;",
 	"H6P9O[72:68],Character,Classic Sub-Zero,Cyrax,Ermac,Human Smoke,Jade,Jax,Kabal,Kano,Kitana,Kung Lao,Liu Kang,Mileena,Nightwolf,Reptile,Scorpion,Sektor,Shang Tsung,Sheeva,Sindel,Smoke,Sonya,Stryker,Sub-Zero;",
-	"P9O[91],Move List,Off,On;",
 	"P9-;",
-	"H0HBP9R[103],Eye Laser LP BL BL HK;",
-	"H0HBP9R[104],Skeleton Rip (LP) F D D F;",
-	"H0HBh3P9R[105],Stage (BL) U U B LK;",
-	"H0HBH3P9R[105],Stage F F F RN;",
-	"H0HBP9R[106],Animality (HP) BL BL BL;",
-	"H0HBh3P9R[107],Friendship LK RN RN HK;",
-	"H0HBP9R[108],Babality F F D D LK;",
-	"H0HCh3P9R[103],Kiss of Death B F D D RN;",
-	"H0HCH3P9R[103],Kiss of Death D D D F LK;",
-	"H0HCh3P9R[104],Bubble Crush (BL+RN) U U B D;",
-	"H0HCh3P9R[105],Stage F F D HP;",
-	"H0HCH3P9R[105],Stage F F F RN;",
-	"H0HCP9R[106],Animality (LP) B F D F;",
-	"H0HCh3P9R[107],Friendship B F B D+RN;",
-	"H0HCh3P9R[108],Babality D D F LK;",
-	"H0HDh3P9R[103],Arm Blades (BL) U D F U;",
-	"H0HDH3P9R[103],Arm Blades (BL) D B U F D;",
-	"H0HDh3P9R[104],Giant Stomp RN BL RN RN LK;",
-	"H0HDH3P9R[104],Giant Stomp RN RN RN BL LK;",
-	"H0HDh3P9R[105],Stage D F D LP;",
-	"H0HDH3P9R[105],Stage F F F RN;",
-	"H0HDP9R[106],Animality (LP) F F D F;",
-	"H0HDh3P9R[107],Friendship LK RN RN LK;",
-	"H0HDh3P9R[108],Babality D D D LK;",
-	"H0HEh3P9R[103],Spirit Light (BL) U U B F, BL;",
-	"H0HEH3P9R[103],Spirit Light D F F HK;",
-	"H0HEh3P9R[104],Axe Lightning (HP) B B D;",
-	"H0HEH3P9R[104],Axe Lightning B B B HP;",
-	"H0HEh3P9R[105],Stage RN RN BL;",
-	"H0HEH3P9R[105],Stage F F F RN;",
-	"H0HEh3P9R[106],Animality F F D D;",
-	"H0HEH3P9R[106],Animality D D D;",
-	"H0HEh3P9R[107],Friendship RN RN RN D;",
-	"H0HEh3P9R[108],Babality F B F B LP;",
-	"H0HFh3P9R[103],Ice Breath B B D B RN;",
-	"H0HFH3P9R[103],Ice Breath D F B HK;",
-	"H0HFh3P9R[104],Freeze Shatter BL BL RN BL RN;",
-	"H0HFH3P9R[104],Freeze Shatter D F D F LP;",
-	"H0HFh3P9R[105],Stage B D F F HK;",
-	"H0HFH3P9R[105],Stage F F F RN;",
-	"H0HFh3P9R[106],Animality (BL) F U U;",
-	"H0HFH3P9R[106],Animality (BL) U U U;",
-	"H0HFh3P9R[107],Friendship LK RN RN U;",
-	"H0HFh3P9R[108],Babality D B B HK;",
-	"H7HBP9R[103],Taser F F F LK;",
-	"H7HBP9R[104],Time Bomb D F D F BL;",
-	"H7HBh3P9R[105],Stage (BL) F U U HK;",
-	"H7HBH3P9R[105],Stage F F F RN;",
-	"H7HBP9R[106],Animality RN RN RN BL;",
-	"H7HBh3P9R[107],Friendship LP RN RN LP;",
-	"H7HBh3P9R[108],Babality D F F B HP;",
-	"H7HCP9R[103],Scream RN BL BL RN+BL;",
-	"H7HCP9R[104],Hair Spin RN RN BL RN BL;",
-	"H7HCh3P9R[105],Stage D D D LP;",
-	"H7HCH3P9R[105],Stage F F F RN;",
-	"H7HCh3P9R[106],Animality (BL) F F U, HP;",
-	"H7HCH3P9R[106],Animality F F HP;",
-	"H7HCh3P9R[107],Friendship RN RN RN RN RN U;",
-	"H7HCh3P9R[108],Babality RN RN RN U;",
-	"H7HDh3P9R[103],Compactor LP RN RN BL;",
-	"H7HDH3P9R[103],Compactor B B B HK;",
-	"H7HDP9R[104],Flamethrower F F F B BL;",
-	"H7HDh3P9R[105],Stage RN RN RN D;",
-	"H7HDH3P9R[105],Stage F F F RN;",
-	"H7HDh3P9R[106],Animality F F D U;",
-	"H7HDH3P9R[106],Animality D D D U;",
-	"H7HDh3P9R[107],Friendship RN RN RN RN D;",
-	"H7HDh3P9R[108],Babality B D D D HK;",
-	"H7HEh3P9R[103],Self-Destruct (BL) D D F U RN;",
-	"H7HEH3P9R[103],Self-Destruct (BL) D B U F D RN;",
-	"H7HEh3P9R[104],Helicopter (BL) D D U D HP;",
-	"H7HEH3P9R[104],Helicopter (BL) U U U D HP;",
-	"H7HEh3P9R[105],Stage RN BL RN;",
-	"H7HEH3P9R[105],Stage F F F RN;",
-	"H7HEh3P9R[106],Animality (BL) U U D D;",
-	"H7HEh3P9R[107],Friendship RN RN RN U;",
-	"H7HEh3P9R[108],Babality F F B HP;",
-	"H7HFP9R[103],Tornado RN BL RN BL D;",
-	"H7HFh3P9R[104],Hat Slice F F B D HP;",
-	"H7HFH3P9R[104],Hat Slice (RN) F F B HP;",
-	"H7HFh3P9R[105],Stage D D F F LK;",
-	"H7HFH3P9R[105],Stage F F F RN;",
-	"H7HFP9R[106],Animality RN RN RN RN BL;",
-	"H7HFh3P9R[107],Friendship RN LP RN LK;",
-	"H7HFh3P9R[108],Babality D F F HP;",
-	"H8HBh3P9R[103],Head Inflation D D B F BL;",
-	"H8HBH3P9R[103],Head Inflation B B F D BL;",
-	"H8HBP9R[104],Scary Face RN BL BL BL HK;",
-	"H8HBh3P9R[105],Stage BL BL HK;",
-	"H8HBH3P9R[105],Stage F F F RN;",
-	"H8HBh3P9R[106],Animality (HP) F F D F;",
-	"H8HBh3P9R[107],Friendship RN LK RN RN U;",
-	"H8HBh3P9R[108],Babality RN RN LK;",
-	"H8HCh3P9R[103],Ground Pound F D D F LP;",
-	"H8HCH3P9R[103],Ground Pound F F F LP;",
-	"H8HCh3P9R[104],Skin Rip (HK) B F F;",
-	"H8HCH3P9R[104],Skin Rip (HK) F F F;",
-	"H8HCh3P9R[105],Stage D F D F LP;",
-	"H8HCH3P9R[105],Stage F F F RN;",
-	"H8HCP9R[106],Animality RN BL BL BL BL;",
-	"H8HCh3P9R[107],Friendship F F D F HP;",
-	"H8HCh3P9R[108],Babality D D D B HK;",
-	"H8HDh3P9R[103],Spike Bed (LP) D F F D;",
-	"H8HDH3P9R[103],Spike Bed (LP) D F D F;",
-	"H8HDP9R[104],Soul Steal (LP) RN BL RN BL;",
-	"H8HDh3P9R[105],Stage (BL) U U B LP;",
-	"H8HDH3P9R[105],Stage F F F RN;",
-	"H8HDP9R[106],Animality (HP) RN RN RN;",
-	"H8HDh3P9R[107],Friendship LK RN RN D;",
-	"H8HDh3P9R[108],Babality RN RN RN LK;",
-	"H8HEh3P9R[103],Inferno F F D D LK;",
-	"H8HEH3P9R[103],Inferno F F F B F LK;",
-	"H8HEh3P9R[104],Arcade Drop (RN+BL) U D U U, BL+RN;",
-	"H8HEH3P9R[104],Arcade Drop (RN+BL) U U U U, BL+RN;",
-	"H8HEh3P9R[105],Stage RN BL BL LK;",
-	"H8HEH3P9R[105],Stage F F F RN;",
-	"H8HEP9R[106],Animality D D U;",
-	"H8HEh3P9R[107],Friendship RN RN RN+D;",
-	"H8HEh3P9R[108],Babality D D D HK;",
-	"H8HFh3P9R[103],Earth Bomb (BL) U U F D;",
-	"H8HFh3P9R[104],Bomb Swallow (BL+RN) D D F U;",
-	"H8HFh3P9R[105],Stage F F D LK;",
-	"H8HFH3P9R[106],Animality D F F BL;",
-	"H8HFh3P9R[107],Friendship RN RN RN HK;",
-	"H8HFh3P9R[108],Babality D D B B HK;",
-	"H9HBP9R[103],Fan Decap B D F F HK;",
-	"H9HBP9R[104],Kiss of Death RN RN BL BL LK;",
-	"H9HBP9R[105],Stage F D D LK;",
-	"H9HBP9R[106],Animality D D D D RN;",
-	"H9HBP9R[107],Friendship D B F F LP;",
-	"H9HBP9R[108],Babality F F D F HK;",
-	"H9HCP9R[103],Staff Shake (BL) U U D F, HP;",
-	"H9HCP9R[104],Staff Impale RN RN RN BL RN;",
-	"H9HCP9R[105],Stage B F D RN;",
-	"H9HCP9R[106],Animality F D F F LK;",
-	"H9HCP9R[107],Friendship B D B B HK;",
-	"H9HCP9R[108],Babality D D F D HK;",
-	"H9HDP9R[103],Nail Spit B B B F LK;",
-	"H9HDP9R[104],Bone Spit D F D F LP;",
-	"H9HDP9R[105],Stage D D D LP;",
-	"H9HDP9R[106],Animality F D D F HK;",
-	"H9HDP9R[107],Friendship D B F HP;",
-	"H9HDP9R[108],Babality D D F F HP;",
-	"H9HEP9R[103],Hell Clones (BL) F F D U, RN;",
-	"H9HEP9R[104],Toasty (BL) D D U, HK;",
-	"H9HEP9R[105],Stage (BL) F U U, LP;",
-	"H9HEP9R[106],Animality (BL) F U U, HK;",
-	"H9HEP9R[107],Friendship B F F B LK;",
-	"H9HEP9R[108],Babality D B B F HP;",
-	"H9HFP9R[103],Head Snack B F D BL;",
-	"H9HFP9R[104],Acid Spit (BL) F F U U, HK;",
-	"H9HFP9R[105],Stage BL RN BL BL;",
-	"H9HFP9R[106],Animality (BL) D D D U, HK;",
-	"H9HFP9R[107],Friendship D F F B HK;",
-	"H9HFP9R[108],Babality F F B D LK;",
-	"HAHBP9R[103],TK Slam (BL) D U D D D, BL;",
-	"HAHBP9R[104],Head Punch RN BL RN RN HK;",
-	"HAHBP9R[105],Stage RN RN RN RN LK;",
-	"HAHCP9R[103],Head Rip D D D F HP;",
-	"HAHCP9R[105],Stage F D F F HP;",
-	"HAHDP9R[104],Head Punch RN BL RN RN HK;",
-	"HAHDP9R[105],Stage (BL) F U U, LP;",
-	"HAHDP9R[108],Babality D B B F HP;",
+	"H0HBP9rP,Eye Laser LP BL BL HK;",
+	"H0HCh3P9rP,Kiss of Death B F D D RN;",
+	"H0HCH3P9rP,Kiss of Death D D D F LK;",
+	"H0HDh3P9rP,Arm Blades (BL) U D F U;",
+	"H0HDH3P9rP,Arm Blades (BL) D B U F D;",
+	"H0HEh3P9rP,Spirit Light (BL) U U B F, BL;",
+	"H0HEH3P9rP,Spirit Light D F F HK;",
+	"H0HFh3P9rP,Ice Breath B B D B RN;",
+	"H0HFH3P9rP,Ice Breath D F B HK;",
+	"H7HBP9rP,Taser F F F LK;",
+	"H7HCP9rP,Scream RN BL BL RN+BL;",
+	"H7HDh3P9rP,Compactor LP RN RN BL;",
+	"H7HDH3P9rP,Compactor B B B HK;",
+	"H7HEh3P9rP,Self-Destruct (BL) D D F U RN;",
+	"H7HEH3P9rP,Self-Destruct (BL) D B U F D RN;",
+	"H7HFP9rP,Tornado RN BL RN BL D;",
+	"H8HBh3P9rP,Head Inflation D D B F BL;",
+	"H8HBH3P9rP,Head Inflation B B F D BL;",
+	"H8HCh3P9rP,Ground Pound F D D F LP;",
+	"H8HCH3P9rP,Ground Pound F F F LP;",
+	"H8HDh3P9rP,Spike Bed (LP) D F F D;",
+	"H8HDH3P9rP,Spike Bed (LP) D F D F;",
+	"H8HEh3P9rP,Inferno F F D D LK;",
+	"H8HEH3P9rP,Inferno F F F B F LK;",
+	"H8HFh3P9rP,Earth Bomb (BL) U U F D;",
+	"H9HBP9rP,Fan Decap B D F F HK;",
+	"H9HCP9rP,Staff Shake (BL) U U D F, HP;",
+	"H9HDP9rP,Nail Spit B B B F LK;",
+	"H9HEP9rP,Hell Clones (BL) F F D U, RN;",
+	"H9HFP9rP,Head Snack B F D BL;",
+	"HAHBP9rP,TK Slam (BL) D U D D D, BL;",
+	"HAHCP9rP,Head Rip D D D F HP;",
+	"H0HBP9rQ,Skeleton Rip (LP) F D D F;",
+	"H0HCh3P9rQ,Bubble Crush (BL+RN) U U B D;",
+	"H0HDh3P9rQ,Giant Stomp RN BL RN RN LK;",
+	"H0HDH3P9rQ,Giant Stomp RN RN RN BL LK;",
+	"H0HEh3P9rQ,Axe Lightning (HP) B B D;",
+	"H0HEH3P9rQ,Axe Lightning B B B HP;",
+	"H0HFh3P9rQ,Freeze Shatter BL BL RN BL RN;",
+	"H0HFH3P9rQ,Freeze Shatter D F D F LP;",
+	"H7HBP9rQ,Time Bomb D F D F BL;",
+	"H7HCP9rQ,Hair Spin RN RN BL RN BL;",
+	"H7HDP9rQ,Flamethrower F F F B BL;",
+	"H7HEh3P9rQ,Helicopter (BL) D D U D HP;",
+	"H7HEH3P9rQ,Helicopter (BL) U U U D HP;",
+	"H7HFh3P9rQ,Hat Slice F F B D HP;",
+	"H7HFH3P9rQ,Hat Slice (RN) F F B HP;",
+	"H8HBP9rQ,Scary Face RN BL BL BL HK;",
+	"H8HCh3P9rQ,Skin Rip (HK) B F F;",
+	"H8HCH3P9rQ,Skin Rip (HK) F F F;",
+	"H8HDP9rQ,Soul Steal (LP) RN BL RN BL;",
+	"H8HEh3P9rQ,Arcade Drop (RN+BL) U D U U, BL+RN;",
+	"H8HEH3P9rQ,Arcade Drop (RN+BL) U U U U, BL+RN;",
+	"H8HFh3P9rQ,Bomb Swallow (BL+RN) D D F U;",
+	"H9HBP9rQ,Kiss of Death RN RN BL BL LK;",
+	"H9HCP9rQ,Staff Impale RN RN RN BL RN;",
+	"H9HDP9rQ,Bone Spit D F D F LP;",
+	"H9HEP9rQ,Toasty (BL) D D U, HK;",
+	"H9HFP9rQ,Acid Spit (BL) F F U U, HK;",
+	"HAhCP9rQ,Head Punch RN BL RN RN HK;",
+	"H0HBh3P9rR,Stage (BL) U U B LK;",
+	"hFH3P9rR,Stage F F F RN;",
+	"h8HFH3P9rR,Stage F F F RN;",
+	"H0HCh3P9rR,Stage F F D HP;",
+	"H0HDh3P9rR,Stage D F D LP;",
+	"H0HEh3P9rR,Stage RN RN BL;",
+	"H0HFh3P9rR,Stage B D F F HK;",
+	"H7HBh3P9rR,Stage (BL) F U U HK;",
+	"H7HCh3P9rR,Stage D D D LP;",
+	"H7HDh3P9rR,Stage RN RN RN D;",
+	"H7HEh3P9rR,Stage RN BL RN;",
+	"H7HFh3P9rR,Stage D D F F LK;",
+	"H8HBh3P9rR,Stage BL BL HK;",
+	"H8HCh3P9rR,Stage D F D F LP;",
+	"H8HDh3P9rR,Stage (BL) U U B LP;",
+	"H8HEh3P9rR,Stage RN BL BL LK;",
+	"H8HFh3P9rR,Stage F F D LK;",
+	"H9HBP9rR,Stage F D D LK;",
+	"H9HCP9rR,Stage B F D RN;",
+	"H9HDP9rR,Stage D D D LP;",
+	"H9HEP9rR,Stage (BL) F U U, LP;",
+	"HAHDP9rR,Stage (BL) F U U, LP;",
+	"H9HFP9rR,Stage BL RN BL BL;",
+	"HAHBP9rR,Stage RN RN RN RN LK;",
+	"HAHCP9rR,Stage F D F F HP;",
+	"H0HBP9rS,Animality (HP) BL BL BL;",
+	"H0HCP9rS,Animality (LP) B F D F;",
+	"H0HDP9rS,Animality (LP) F F D F;",
+	"H0HEh3P9rS,Animality F F D D;",
+	"H0HEH3P9rS,Animality D D D;",
+	"H0HFh3P9rS,Animality (BL) F U U;",
+	"H0HFH3P9rS,Animality (BL) U U U;",
+	"H7HBP9rS,Animality RN RN RN BL;",
+	"H7HCh3P9rS,Animality (BL) F F U, HP;",
+	"H7HCH3P9rS,Animality F F HP;",
+	"H7HDh3P9rS,Animality F F D U;",
+	"H7HDH3P9rS,Animality D D D U;",
+	"H7HEh3P9rS,Animality (BL) U U D D;",
+	"H7HFP9rS,Animality RN RN RN RN BL;",
+	"H8HBh3P9rS,Animality (HP) F F D F;",
+	"H8HCP9rS,Animality RN BL BL BL BL;",
+	"H8HDP9rS,Animality (HP) RN RN RN;",
+	"H8HEP9rS,Animality D D U;",
+	"H8HFH3P9rS,Animality D F F BL;",
+	"H9HBP9rS,Animality D D D D RN;",
+	"H9HCP9rS,Animality F D F F LK;",
+	"H9HDP9rS,Animality F D D F HK;",
+	"H9HEP9rS,Animality (BL) F U U, HK;",
+	"H9HFP9rS,Animality (BL) D D D U, HK;",
+	"H0HBh3P9rT,Friendship LK RN RN HK;",
+	"H0HCh3P9rT,Friendship B F B D+RN;",
+	"H0HDh3P9rT,Friendship LK RN RN LK;",
+	"H0HEh3P9rT,Friendship RN RN RN D;",
+	"H0HFh3P9rT,Friendship LK RN RN U;",
+	"H7HBh3P9rT,Friendship LP RN RN LP;",
+	"H7HCh3P9rT,Friendship RN RN RN RN RN U;",
+	"H7HDh3P9rT,Friendship RN RN RN RN D;",
+	"H7HEh3P9rT,Friendship RN RN RN U;",
+	"H7HFh3P9rT,Friendship RN LP RN LK;",
+	"H8HBh3P9rT,Friendship RN LK RN RN U;",
+	"H8HCh3P9rT,Friendship F F D F HP;",
+	"H8HDh3P9rT,Friendship LK RN RN D;",
+	"H8HEh3P9rT,Friendship RN RN RN+D;",
+	"H8HFh3P9rT,Friendship RN RN RN HK;",
+	"H9HBP9rT,Friendship D B F F LP;",
+	"H9HCP9rT,Friendship B D B B HK;",
+	"H9HDP9rT,Friendship D B F HP;",
+	"H9HEP9rT,Friendship B F F B LK;",
+	"H9HFP9rT,Friendship D F F B HK;",
+	"H0HBP9rU,Babality F F D D LK;",
+	"H0HCh3P9rU,Babality D D F LK;",
+	"H0HDh3P9rU,Babality D D D LK;",
+	"H0HEh3P9rU,Babality F B F B LP;",
+	"H0HFh3P9rU,Babality D B B HK;",
+	"H7HBh3P9rU,Babality D F F B HP;",
+	"H7HCh3P9rU,Babality RN RN RN U;",
+	"H7HDh3P9rU,Babality B D D D HK;",
+	"H7HEh3P9rU,Babality F F B HP;",
+	"H7HFh3P9rU,Babality D F F HP;",
+	"H8HBh3P9rU,Babality RN RN LK;",
+	"H8HCh3P9rU,Babality D D D B HK;",
+	"H8HDh3P9rU,Babality RN RN RN LK;",
+	"H8HEh3P9rU,Babality D D D HK;",
+	"H8HFh3P9rU,Babality D D B B HK;",
+	"H9HBP9rU,Babality F F D F HK;",
+	"H9HCP9rU,Babality D D F D HK;",
+	"H9HDP9rU,Babality D D F F HP;",
+	"H9HEP9rU,Babality D B B F HP;",
+	"HAHDP9rU,Babality D B B F HP;",
+	"H9HFP9rU,Babality F F B D LK;",
 	"P9-;",
-	"P9R[109],Mercy (RN) D D;",
+	"P9rV,Mercy (RN) D D;",
+	// NBA Hangtime, Maximum Hangtime / Open Ice: Secret Codes
+	"h2H3O[93:92],Secret Codes,Off,Page 1,Page 2;",
+	"h2H7O[112:110],Secret Codes,Off,Secret Players 1,Secret Players 2,Secret Players 3,Tonight's Game,Face-off;",
+	"H2-;",
+	"h2HA-;",
+	// DIP Switches (P2), every game: one list in alphabetical order, each game's lines shown (see DSW)
+	"P2,DIP Switches;",
+	"P2-;",
+	"H2P2O[127],Attract Sound,On,Off;",
+	"h2H7P2O[127],Attract Sound,On,Off;",
+	"H5P2O[126],Bill Validator,Off,On;",
+	"H2P2O[94],Blood,On,Off;",
+	"h2HAP2O[94],Cabinet,2-player,4-player;",
+	"H2P2O[124:120],Coinage,USA-1,USA-2,USA-3,USA-4,USA-ECA,USA-Free Play,German-1,German-2,German-3,German-4,German-5,German-ECA,German-Free Play,French-1,French-2,French-3,French-4,French-ECA,French-Free Play;",
+	"h2H9P2O[124:120],Coinage,USA-1,USA-2,USA-3,USA-4,USA-9,USA-10,USA-ECA,USA-Free Play,German-1,German-2,German-3,German-4,German-5,German-ECA,German-Free Play,French-1,French-2,French-3,French-4,French-11,French-12,French-ECA,French-Free Play;",
+	"h4P2O[122:120],Coinage,1,2,3,4,ECA,Free Play;",
+	"P2O[125],Coinage Source,CMOS,Dipswitch;",
+	"H4P2O[119],Counters,Two,One;",
+	"h4P2O[116:115],Counters,One 1/1,One Totalizing,Two 1/1;",
+	"h5P2O[114:113],Country,USA,French,German;",
+	"h2H7P2O[95],Head Size,Normal,Large;",
+	"h2h7P2O[117],Powerup Test,Off,On;",
+	"h2H8P2O[94],Realtime Clock,No,Yes;",
+	"P2T[12],Service Credit;",
+	"P2O[118],Test Switch,Off,On;",
+	"P2T[13],Tilt;",
+	"H2P2O[95],Violence,On,Off;",
+	// Secret Menu (MK3, UMK3: P8) / Secret Midway Menu (Hangtimes: back to Off once entered)
+	"H2P8,Secret Menu;",
+	"P8-;",
+	"P8R[16],Open EJB Menu (Attract Mode);",
+	"H6P8O[17],EJB Character Endings,Off,On;",
+	"h2H3O[16],Secret Midway Menu,Off,On;",
+	"O[9],Service Mode,Off,On;",
+	"O[8],Pause when OSD is Open,On,Off;",
 	"-;",
-	"DIP;",
-	"-;",
-	"O[8],Pause when OSD is open,On,Off;",
-	"-;",
-	"R[0],Reset;",
+	"T[0],Reset;",
+	"R[0],Reset and close OSD;",
 	"J1,B1,B2,B3,B4,B5,B6,Start,Coin,Test,Pause;",
 	"jn,A,B,X,Y,L,R,Start,Select,,;",
 	"I,Kode set for next VS screen,Kode set for next game over,Kombat Kode entered,Only during FINISH HIM,The winner is another fighter,Finishing move entered,Finishing moves need this release's MRA;",
@@ -337,8 +358,11 @@ wire        fin_info_req;            // the finishing move player's
 wire  [7:0] fin_info;
 wire [15:0] fin_menu;                // and its menu mask bits
 reg         is_hangtime;             // NBA Hangtime / Maximum Hangtime: Secret Midway Menu
+reg         is_openice;              // 2 On 2 Open Ice Challenge: its Secret Codes line
+reg         is_wwf;                  // WWF WrestleMania
+reg         is_rampage;              // Rampage World Tour
 reg         alt_present;             // the MRA brought a patched program copy (UMK3)
-wire        has_hidden = is_mk | is_hangtime | alt_present;
+reg         smm_clear;               // set the Secret Midway Menu option back to Off
 
 wire        forced_scandoubler;
 wire        direct_video;
@@ -374,10 +398,20 @@ hps_io #(.CONF_STR(CONF_STR), .CONF_STR_BRAM(1), .WIDE(1)) hps_io
 	.info_req            (kode_info_req | fin_info_req),
 	.info                (fin_info_req ? fin_info : kode_info),
 
-	// bits 0 and 7-15: the finishing moves' character, bit 3 on MK3 / UMK3
-	// their MK3 1.x table (Hangtime's elsewhere: the Hangtime line is h2H3)
-	.status_menumask     ({fin_menu[15:7], ~is_umk3, ~has_hidden, ~alt_present, is_mk ? fin_menu[3] : ~is_hangtime,
-	                       ~is_mk, ~status[101], fin_menu[0]}),
+	// the Secret Midway Menu option goes back to Off once its code starts
+	.status_in           (status & ~(128'd1 << 16)),
+	.status_set          (smm_clear),
+
+	// bits (set: an H line hides): 1 CRT Adjust off, 2 not MK3 / UMK3 (H2:
+	// their lines, h2: the other games'), 4 WWF or a Hangtime, 5 a
+	// Hangtime, 6 not UMK3 (4 and 5 are 0 on MK3 / UMK3). Bits 0, 3 and
+	// 7-15 are on MK3 / UMK3 the finishing moves' (character, MK3 1.x
+	// table; their lines are on the MK-only page P9), on the other games 3
+	// not a Hangtime, 7 not Open Ice, 8 not WWF, 9 not Open Ice or Rampage,
+	// A (10) not a Hangtime or Open Ice
+	.status_menumask     (is_mk ? {fin_menu[15:7], ~is_umk3, 1'b0, 1'b0, fin_menu[3], 1'b0, ~status[101], fin_menu[0]} :
+	                              {5'b11111, ~(is_hangtime | is_openice), ~(is_openice | is_rampage), ~is_wwf, ~is_openice,
+	                               1'b1, is_hangtime, is_wwf | is_hangtime, ~is_hangtime, 1'b1, ~status[101], 1'b1}),
 
 	.ps2_key             (ps2_key),
 
@@ -443,8 +477,11 @@ wire reset = RESET | status[0] | buttons[1] | rom_download | ~rom_loaded | (boot
 // units, little endian; 0: none), bytes 12-13 the word in main RAM of the
 // game's state variable that the Kombat Kode and finishing move players
 // watch (MK3, UMK3; little endian; 0: none), byte 14 the finishing moves'
-// table (rtl/wunit_finish.sv: 0 none, 1 UMK3 / MK3 2.x, 2 MK3 1.x), byte 15
-// 0. Older MRAs end at byte 9, 11 or 13.
+// table on MK3 / UMK3 (rtl/wunit_finish.sv: 0 none, 1 UMK3 / MK3 2.x, 2
+// MK3 1.x) and on the Hangtimes the secret player variant
+// (tools/hangtime_secrets.py: 0 none, 1 NBA Hangtime, 2-4 Maximum
+// Hangtime L1.03, L1.0 / M1.0, L0.9), byte 15 0. Older MRAs end at byte 9,
+// 11 or 13.
 //////////////////////////////////////////////////////////////////
 
 localparam G_MK3      = 3'd0;    // Mortal Kombat 3
@@ -480,8 +517,8 @@ always @(posedge clk_sys) begin
 end
 
 //////////////////////////////////////////////////////////////////
-// Downloads: ROMs (index 0), game configuration (1), NVRAM (2), DIP
-// switches (254)
+// Downloads: ROMs (index 0), game configuration (1), NVRAM (2). The MRAs
+// carry no DIP switches: they are in the core's OSD (see DSW)
 //
 // ROM layout (byte addresses, the same in the MRA and in SDRAM):
 //   0x000000  program, 1 MB (16-bit little endian)
@@ -492,11 +529,11 @@ end
 // each ROM download, as MAME starts with it zeroed.
 //////////////////////////////////////////////////////////////////
 
-reg  [63:0] dsw;
 reg   [7:0] cfg [0:15];              // the configuration bytes as they arrive
 reg  [15:0] cfg_alt;                 // patched program copy, 8 KB units (0: none)
 reg  [15:0] cfg_kstate;              // the game's state variable, word in main RAM (0: none)
 reg   [1:0] cfg_fin;                 // the finishing moves' table (0: none)
+reg   [2:0] cfg_ht;                  // the Hangtimes' secret player variant (0: none)
 
 always @(posedge clk_sys) begin
 	if (ioctl_wr && ioctl_index == 16'd1 && ioctl_addr == 27'd0) begin
@@ -512,14 +549,13 @@ always @(posedge clk_sys) begin
 		cfg[ioctl_addr[3:0]]         <= ioctl_dout[7:0];
 		cfg[ioctl_addr[3:0] + 4'd1]  <= ioctl_dout[15:8];
 	end
-	if (ioctl_wr && ioctl_index == 16'd254 && ioctl_addr[26:3] == 24'd0)
-		dsw[{ioctl_addr[2:1], 4'b0000} +: 16] <= ioctl_dout;
 
 	game_id   <= cfg[0][2:0];
 	gfx_slots <= {cfg[8], cfg[7], cfg[6], cfg[5], cfg[4], cfg[3], cfg[2], cfg[1]};
 	cfg_alt   <= {cfg[11], cfg[10]};
 	cfg_kstate <= {cfg[13], cfg[12]};
-	cfg_fin   <= cfg[14] > 8'd2 ? 2'd0 : cfg[14][1:0];
+	cfg_fin   <= (cfg[0][2:0] != G_MK3 && cfg[0][2:0] != G_UMK3) || cfg[14] > 8'd2 ? 2'd0 : cfg[14][1:0];
+	cfg_ht    <= cfg[0][2:0] != G_NBAHANGT || cfg[14] > 8'd4 ? 3'd0 : cfg[14][2:0];
 end
 
 reg  [24:1] sd_wr_addr;
@@ -607,7 +643,7 @@ wire [15:0] nv_din  = cmos_clr ? 16'h0000 : ioctl_dout;
 // coins, starts and cabinet switches.
 //
 // Service Credit and Tilt are not on the controllers: they are OSD items
-// (Controls page), handled in "OSD service credit and tilt" below.
+// (DIP Switches page), handled in "OSD service credit and tilt" below.
 //////////////////////////////////////////////////////////////////
 
 // {R, L, D, U} as MAME orders them (bit 0 up, 1 down, 2 left, 3 right)
@@ -656,11 +692,13 @@ always @(*) begin
 
 	case (cfg_layout)
 		L_MK: begin
-			// B1 high punch, B2 block, B3 high kick, B4 low punch, B5 low kick, B6 run
-			in0[3:0]  = udlr(joy0);  in0[6:4]  = joy0[6:4];
-			in0[11:8] = udlr(joy1);  in0[14:12] = joy1[6:4];
-			in1[2:0]  = joy0[9:7];
-			in1[6:4]  = joy1[9:7];
+			// B1 high punch, B2 low punch, B3 high kick, B4 low kick, B5 block,
+			// B6 run; MAME's IN0 has high punch, block, high kick (bits 4-6),
+			// IN1 low punch, low kick, run (bits 0-2)
+			in0[3:0]  = udlr(joy0);  in0[6:4]  = {joy0[6], joy0[8], joy0[4]};
+			in0[11:8] = udlr(joy1);  in0[14:12] = {joy1[6], joy1[8], joy1[4]};
+			in1[2:0]  = {joy0[9], joy0[7], joy0[5]};
+			in1[6:4]  = {joy1[9], joy1[7], joy1[5]};
 		end
 		L_WWF: begin
 			// B1 punch, B2 defense, B3 power punch, B4 kick, B5 power kick
@@ -697,9 +735,94 @@ always @(posedge clk_sys) begin
 	else if ((sys0[3] | sys1[3]) & ~pause_btn_d) pause_toggle <= ~pause_toggle;
 end
 
-// the Move List window (see Video) holds the game too
-wire movelist_on = status[91] & is_mk;
-wire pause = pause_toggle | (OSD_STATUS & ~status[8]) | movelist_on;
+// the Move List and Secret Codes windows (see Video) hold the game too
+wire [4:0] ml_sel = status[117:113];      // Move List: 0 off, else the OSD's character + 1
+wire movelist_on = is_mk && ml_sel != 5'd0 && ml_sel <= (is_umk3 ? 5'd23 : 5'd15);
+wire secrets_on  = ((status[93:92] != 2'd0) & is_hangtime) | ((status[112:110] != 3'd0) & is_openice);
+wire pause = pause_toggle | (OSD_STATUS & ~status[8]) | movelist_on | secrets_on;
+
+//////////////////////////////////////////////////////////////////
+// DSW
+//
+// Every game takes its DIP switches from the OSD's "DIP Switches" page
+// (P2, with Service Credit and Tilt), not the MRA (the MRAs have none, so
+// the framework's own DIP entry stays hidden). Each option's first setting
+// is MAME's default for that game (MK3 / UMK3 0xFD7D, WWF 0x7FFD, the
+// Hangtimes 0x7F7D, Open Ice 0xEBBE, Rampage 0xFBBE). Options of the same
+// name share status bits across games; games without one (names left off
+// a game's list) keep MAME's default:
+//   118 Test Switch      119 Counters (Two, One)   116-115 Counters (3-way)
+//   124-120 Coinage (each game's list, MAME's order)  125 Coinage Source
+//   126 Bill Validator   127 Attract Sound         117 Powerup Test
+//   94 Blood / Cabinet / Realtime Clock            95 Violence / Head Size
+//   114-113 Country (Hangtimes; MK3 / UMK3 use 117-113 for the Move List)
+//////////////////////////////////////////////////////////////////
+
+reg  [4:0] mk_coin;                  // MK3 / UMK3: USA-1 ... French-Free Play
+always @(*) begin
+	case (status[124:120])
+		5'd0:  mk_coin = 5'd31;  5'd1:  mk_coin = 5'd15;  5'd2:  mk_coin = 5'd23;  5'd3:  mk_coin = 5'd7;
+		5'd4:  mk_coin = 5'd27;  5'd5:  mk_coin = 5'd3;   5'd6:  mk_coin = 5'd29;  5'd7:  mk_coin = 5'd13;
+		5'd8:  mk_coin = 5'd21;  5'd9:  mk_coin = 5'd5;   5'd10: mk_coin = 5'd25;  5'd11: mk_coin = 5'd9;
+		5'd12: mk_coin = 5'd1;   5'd13: mk_coin = 5'd30;  5'd14: mk_coin = 5'd14;  5'd15: mk_coin = 5'd22;
+		5'd16: mk_coin = 5'd6;   5'd17: mk_coin = 5'd26;  5'd18: mk_coin = 5'd2;
+		default: mk_coin = 5'd31;
+	endcase
+end
+
+reg  [4:0] coin23;                   // Open Ice, Rampage: USA-1 ... French-Free Play
+always @(*) begin
+	case (status[124:120])
+		5'd0:  coin23 = 5'd31;  5'd1:  coin23 = 5'd30;  5'd2:  coin23 = 5'd29;  5'd3:  coin23 = 5'd28;
+		5'd4:  coin23 = 5'd26;  5'd5:  coin23 = 5'd25;  5'd6:  coin23 = 5'd27;  5'd7:  coin23 = 5'd24;
+		5'd8:  coin23 = 5'd23;  5'd9:  coin23 = 5'd22;  5'd10: coin23 = 5'd21;  5'd11: coin23 = 5'd20;
+		5'd12: coin23 = 5'd18;  5'd13: coin23 = 5'd19;  5'd14: coin23 = 5'd16;  5'd15: coin23 = 5'd15;
+		5'd16: coin23 = 5'd14;  5'd17: coin23 = 5'd13;  5'd18: coin23 = 5'd12;  5'd19: coin23 = 5'd10;
+		5'd20: coin23 = 5'd9;   5'd21: coin23 = 5'd11;  5'd22: coin23 = 5'd8;
+		default: coin23 = 5'd31;
+	endcase
+end
+
+reg  [2:0] coin6;                    // WWF, Hangtimes: 1, 2, 3, 4, ECA, Free Play
+always @(*) begin
+	case (status[122:120])
+		3'd0: coin6 = 3'd7;  3'd1: coin6 = 3'd3;  3'd2: coin6 = 3'd5;
+		3'd3: coin6 = 3'd1;  3'd4: coin6 = 3'd6;  3'd5: coin6 = 3'd0;
+		default: coin6 = 3'd7;
+	endcase
+end
+
+wire [1:0] counters3 = 2'd3 - status[116:115];     // One 1/1, One Totalizing, Two 1/1: 3, 2, 1
+wire [1:0] country   = 2'd3 - status[114:113];     // USA, French, German: 3, 2, 1
+
+//                    15 Violence  14 Blood     13    12 Attract    11    10 Bill        9 Powerup 8
+wire [15:0] mk_dsw = {~status[95], ~status[94], 1'b1, ~status[127], 1'b1, ~status[126], 1'b0,     1'b1,
+                      status[125], mk_coin, status[119], ~status[118]};
+//                    7 Source     6-2 Coinage  1 Counters   0 Test Switch
+
+//                     15 Source    14-12 Coinage 11-10 Country 9-8 Counters 7     6 Bill        5-4
+wire [15:0] wwf_dsw = {status[125], coin6,        2'd3,         counters3,   1'b1, ~status[126], 2'b11,
+                       ~status[94], 1'b1, status[117], ~status[118]};
+//                     3 Realtime Clock 2  1 Powerup   0 Test Switch
+
+//                    15 Source    14-12 Coinage 11-10 Country 9-8 Counters 7 Cabinet   6 Bill  5-2
+wire [15:0] ht_dsw = {status[125], coin6,        country,      counters3,   status[94], 1'b1,   4'b1111,
+                      status[117], ~status[118]};
+//                    1 Powerup    0 Test Switch
+
+//                    15 Test       14-13  12 Cabinet  11 Head Size  10 Powerup 9 Attract     8 Bill
+wire [15:0] oi_dsw = {~status[118], 2'b11, status[94], ~status[95],  1'b0,      ~status[127], ~status[126],
+                      1'b1, status[119], coin23, status[125]};
+//                    7     6 Counters   5-1 Coinage 0 Source
+
+//                    15 Test       14-11    10 Powerup   9     8 Bill
+wire [15:0] rw_dsw = {~status[118], 4'b1111, status[117], 1'b1, ~status[126],
+                      1'b1, status[119], coin23, status[125]};
+//                    7     6 Counters   5-1 Coinage 0 Source
+
+reg [15:0] dsw;
+always @(posedge clk_sys)
+	dsw <= is_mk ? mk_dsw : is_wwf ? wwf_dsw : is_hangtime ? ht_dsw : is_openice ? oi_dsw : rw_dsw;
 
 //////////////////////////////////////////////////////////////////
 // Wolf Unit board
@@ -756,13 +879,13 @@ end
 //////////////////////////////////////////////////////////////////
 // Hidden menus and cut content
 //
-// "Open EJB Menu" (MK3, UMK3) and "Open Secret Midway Menu" (NBA Hangtime,
-// Maximum Hangtime) enter the game's own button code for its hidden menu
-// (rtl/wunit_macro.sv lists the codes); the buttons are pressed on IN0 on
-// top of the controls. They share status bit 16; only the game's own line
-// is shown.
+// "Open EJB Menu" (MK3, UMK3: on the Secret Menu page, P8) and "Open Secret
+// Midway Menu" (NBA Hangtime, Maximum Hangtime) enter the game's own button
+// code for its hidden menu (rtl/wunit_macro.sv lists the codes); the
+// buttons are pressed on IN0 on top of the controls. They share status bit
+// 16; only the game's own line is shown.
 //
-// "EJB Character Endings" (UMK3) runs the patched copy of the program ROM
+// "EJB Character Endings" (UMK3, Secret Menu page) runs the patched copy of the program ROM
 // the MRA loads after the graphics: the EJB menu gets back the CHARACTER
 // ENDINGS item that MK3 had and UMK3 left out of its menu (its code is
 // still in the ROM), and an ending shows the story as well as the cast
@@ -777,6 +900,9 @@ wire [15:0] macro_press;
 always @(posedge clk_sys) begin
 	is_mk       <= (game_id == G_MK3) || (game_id == G_UMK3);
 	is_hangtime <= (game_id == G_NBAHANGT);
+	is_openice  <= (game_id == G_OPENICE);
+	is_wwf      <= (game_id == G_WWF);
+	is_rampage  <= (game_id == G_RMPGWT);
 	alt_present <= (cfg_alt != 16'd0);
 
 	if (reset)
@@ -784,6 +910,9 @@ always @(posedge clk_sys) begin
 
 	opt_d  <= status[17];
 	code_d <= status[16];
+	// on the Hangtimes "Secret Midway Menu" is an Off / On option: once On
+	// has started the code, the option is set back to Off
+	smm_clear <= is_hangtime & status[16] & ~code_d;
 	if (alt_present && (status[17] != opt_d))
 		opt_rst <= 8'hFF;
 	else if (opt_rst != 8'd0)
@@ -804,20 +933,21 @@ wunit_macro macro
 //////////////////////////////////////////////////////////////////
 // Kombat Kodes (MK3, UMK3)
 //
-// The "Kombat Kodes" page links to five category pages (Fight, Round 1
-// Winner Battles, Kombat Zone, Messages, Ultimate Kombat Kodes: P4-P8; the
-// OSD has one level of pages, so Back from a category goes to the main
-// menu) listing the kodes the game's program ROM has (the UMK3-only lines
-// and pages hidden on MK3, MK3's Smoke kode on UMK3), each a trigger on
-// status bits 18-67 in order, then 73 (MK3's Ultimate Kombat Kode: 68-72
-// were taken). A pick is entered by the player (rtl/wunit_kodes.sv) at the
+// The "Kombat Kodes" page (P3) links to four category pages (Fight, Round
+// 1 Winner Battles, Kombat Zone, Messages: P4-P7; the OSD has one level of
+// pages, so Back from a category goes to the main menu) and lists the
+// Ultimate Kombat Kodes itself (the OSD has nine pages). The kodes are the
+// ones the game's program ROM has (the UMK3-only lines and pages hidden on
+// MK3, MK3's Smoke kode on UMK3), each a trigger on status bits 18-56,
+// 103-109, 64-67, then 73, in order (tools/kombat_kodes.py KODE_BITS: 57-63
+// went to the finishing moves, 68-72 were taken). A pick is entered by the player (rtl/wunit_kodes.sv) at the
 // next screen that takes it: the VS screen of a two-player fight, or, for
 // an Ultimate Kombat Kode, the game over screen. It finds those by
 // the game's state variable, whose main RAM word the MRA gives (config
 // bytes 12-13). An OSD message says the kode is waiting, then entered.
 //////////////////////////////////////////////////////////////////
 
-wire [50:0] kode_bits = {status[73], status[67:18]};
+wire [50:0] kode_bits = {status[73], status[67:64], status[109:103], status[56:18]};
 reg  [50:0] kode_bits_d;
 reg         kode_sel;
 reg   [5:0] kode_idx;
@@ -864,23 +994,23 @@ wunit_kodes kodes
 //////////////////////////////////////////////////////////////////
 // Finishing moves (MK3, UMK3)
 //
-// The "Move List / Finishing Moves" page (P9) has a Character option (the
-// game's characters in alphabetical order, MK3's 15 or UMK3's 23: status
-// bits 72-68), the Move List window (bit 91, see Video) and below them the
-// moves of that character only, each by name and input: each line carries
+// The "Finishing Moves" page (P9) has a Character option (the game's
+// characters in alphabetical order, MK3's 15 or UMK3's 23: status bits
+// 72-68) and below it the moves of that character only, each by name and
+// input: each line carries
 // two menu mask bits, the character's number / 5 and % 5, that the player
 // clears for the picked character (see rtl/wunit_finish.sv; lines that
 // differ for MK3 1.0 / p4.0 also bit 3, which on MK3 / UMK3 says whether
 // the MRA gave the MK3 1.x table). Each move is a trigger on status bits
-// 103-108 by slot (Fatality 1, Fatality 2, Stage Fatality, Animality,
-// Friendship, Babality), the Mercy, shared by all, on 109. The player
+// 57-62 by slot (Fatality 1, Fatality 2, Stage Fatality, Animality,
+// Friendship, Babality), the Mercy, shared by all, on 63 (written rP-rV,
+// MiSTer's short form for bits 32-63: the page has 160-odd lines). The player
 // enters a pick at FINISH HIM on the winner's controls; the lines, the
 // programs and the table byte of the MRA (config byte 14) come from
 // tools/finishing_moves.py.
 //////////////////////////////////////////////////////////////////
 
-wire  [6:0] fin_bits = status[109:103];
-wire  [4:0] fin_char;
+wire  [6:0] fin_bits = status[63:57];
 reg   [6:0] fin_bits_d;
 reg         fin_sel;
 reg   [2:0] fin_slot;
@@ -916,7 +1046,7 @@ wunit_finish finish
 	.info_req  (fin_info_req),
 	.info      (fin_info),
 	.menu      (fin_menu),
-	.char_id   (fin_char),
+	.char_id   (),
 	.busy      ()
 );
 
@@ -935,7 +1065,7 @@ midway_wunit board
 
 	.in0            (~(in0 | macro_press | kode_press0 | fin_press0)),
 	.in1            (~(in1 | kode_press1 | fin_press1)),
-	.dsw            (dsw[15:0]),
+	.dsw            (dsw),
 	.in2            (~in2),
 
 	.snd_wr         (snd_wr),
@@ -1089,23 +1219,39 @@ sdram sdram
 // Video
 //////////////////////////////////////////////////////////////////
 
-// ---- Move List window (MK3, UMK3; rtl/wunit_movelist.sv) ----
+// ---- Move List window (MK3, UMK3) and Secret Codes window (NBA Hangtime,
+// Maximum Hangtime, Open Ice): rtl/wunit_movelist.sv ----
 //
-// OSD "Move List" (status bit 91, on the Finishing Moves page) draws the
-// moves of the fighter picked under "Character" over the dimmed game, which
-// pauses while the window is up. Pages (tools/move_list.py): UMK3 0-22,
-// MK3 rev 2.x 23-37, MK3 rev 1.x 38-52 (the MRA's finishing moves table),
-// by the game's character number. The picture passes unchanged otherwise.
+// OSD "Move List" (status bits 117-113: Off, then the game's characters in
+// the OSD's alphabetical order) draws that fighter's moves over the game's
+// logo (tools/movelist_logo.py), and the game pauses while the window is
+// up. Pages (tools/move_list.py, in the same order): UMK3 0-22, MK3 rev
+// 2.x 23-37, MK3 rev 1.x 38-52 (the MRA's finishing moves table). OSD
+// "Secret Codes" (bits 93-92: Off, Page 1 the secret players with who they
+// are and the match-up codes, Page 2 the hidden NBA players) shows the
+// Hangtimes' lists the same way, over the game's logo: pages 53-60, two per
+// variant (MRA byte 14), 61 (over the dimmed game) when the MRA names none;
+// on Open Ice (bits 112-110: Off, Secret Players 1-3, Tonight's Game codes,
+// face-off codes) pages 62-66. The picture passes unchanged otherwise.
 
-wire [5:0] ml_page = is_umk3 ? {1'b0, fin_char} : (cfg_fin == 2'd2 ? 6'd38 : 6'd23) + {1'b0, fin_char};
+wire [6:0] ml_page = is_openice  ? 7'd61 + {4'd0, status[112:110]} :
+                     is_hangtime ? (cfg_ht == 3'd0 ? 7'd61 : 7'd51 + {3'b000, cfg_ht, 1'b0} + {6'd0, status[93]}) :
+                     (is_umk3 ? 7'd0 : cfg_fin == 2'd2 ? 7'd38 : 7'd23) + {2'b00, ml_sel} - 7'd1;
+// behind the text the game's logo (tools/movelist_logo.py: 1 MK3, 2 UMK3,
+// 3 Open Ice, 4 NBA Hangtime, 5 Maximum Hangtime), the dimmed game when
+// the Hangtime MRA names no variant
+wire [2:0] ml_logo = movelist_on ? (is_umk3 ? 3'd2 : 3'd1) :
+                     is_openice  ? 3'd3 :
+                     is_hangtime ? (cfg_ht == 3'd0 ? 3'd0 : cfg_ht == 3'd1 ? 3'd4 : 3'd5) : 3'd0;
 wire [7:0] ml_r, ml_g, ml_b;
 
 wunit_movelist movelist
 (
 	.clk     (clk_sys),
 	.ce_pix  (ce_pix),
-	.enable  (movelist_on),
+	.enable  (movelist_on | secrets_on),
 	.page    (ml_page),
+	.logo    (ml_logo),
 	.r_in    (core_r),
 	.g_in    (core_g),
 	.b_in    (core_b),
