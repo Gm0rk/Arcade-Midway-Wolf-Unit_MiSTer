@@ -7,6 +7,7 @@ Endings.
 
 ## Contents
 
+- [OSD](#osd)
 - [Controls](#controls)
 - [EJB Menu](#ejb-menu)
 - [EJB Character Endings](#ejb-character-endings)
@@ -15,27 +16,46 @@ Endings.
 - [Move List](#move-list)
 - [Finishing Moves](#finishing-moves)
 
+## OSD
+
+The main page, in order:
+
+- Video Settings
+- Kombat Kodes (below)
+- Move List (below)
+- Finishing Moves (below)
+- DIP Switches: Attract Sound, Bill Validator, Blood, Coinage, Coinage
+  Source, Counters, Service Credit, Test Switch, Tilt, Violence
+- Secret Menu: Open EJB Menu (Attract Mode), EJB Character Endings
+- Service Mode, Pause when OSD is Open
+- Reset, Reset and close OSD
+
+The DIP switches start at MAME's settings (Powerup Test, not on the page,
+stays Off). With Coinage Source at CMOS
+(the default) the game takes its coinage from its own adjustments, not
+from the Coinage switch.
+
 ## Controls
 
-High Punch, Block, High Kick, Low Punch, Low Kick, Run; two players.
+High Punch, Low Punch, High Kick, Low Kick, Block, Run; two players.
 
 ## EJB Menu
 
-The developers' test menu, in every revision. OSD "Open EJB Menu" while
-the game is in attract mode (by hand: P1 Block x5, P2 Block x10, P1 Block
-x3, P2 Block x1, P1 Block x2, P2 Block x2, P1 Block x3, P2 Block x3). It
-adds extra audits, the full credits, the "Penacho/Miller" Galaga-style
-game, the hidden characters (Mileena, Ermac, Classic Sub-Zero) on/off and
-a fatality demonstration.
+The developers' test menu, in every revision. OSD Secret Menu, "Open EJB
+Menu (Attract Mode)" while the game is in attract mode (by hand: P1 Block
+x5, P2 Block x10, P1 Block x3, P2 Block x1, P1 Block x2, P2 Block x2, P1
+Block x3, P2 Block x3). It adds extra audits, the full credits, the
+"Penacho/Miller" Galaga-style game, the hidden characters (Mileena, Ermac,
+Classic Sub-Zero) on/off and a fatality demonstration.
 
 ## EJB Character Endings
 
-OSD option. UMK3 dropped Mortal Kombat 3's Character Endings item from its
-EJB menu, but the item and its submenu (Kano to Smoke) are still in the
-ROM, and the endings' stories are the game's own. With the option on, the
-EJB menu has the item back and each ending shows its story before the cast
-roll. The core runs a patched copy of the program ROM that the MRA loads
-next to the original; changing the option restarts the game.
+OSD Secret Menu option. UMK3 dropped Mortal Kombat 3's Character Endings
+item from its EJB menu, but the item and its submenu (Kano to Smoke) are
+still in the ROM, and the endings' stories are the game's own. With the
+option on, the EJB menu has the item back and each ending shows its story
+before the cast roll. The core runs a patched copy of the program ROM that
+the MRA loads next to the original; changing the option restarts the game.
 
 ## Kombat Kodes
 
@@ -43,14 +63,14 @@ On the VS screen before a two-player fight each player steps three icons
 with Low Punch, Block and Low Kick; the six digits (player 1's three, then
 player 2's) switch something on for the fight. The OSD page "Kombat Kodes"
 enters them for you, sorted into Fight, Round 1 Winner Battles, Kombat
-Zone, Messages and Ultimate Kombat Kodes (Back from a category returns to
-the main menu).
+Zone and Messages (Back from a category returns to the main menu); the
+Ultimate Kombat Kodes are on the page itself, under the categories.
 
 Pick a kode at any time in a two-player game; a message says it is
 waiting, and at the next VS screen the core presses the buttons as the two
 players would. The game then shows the kode's message under the fighters.
 A kode picked when the VS screen is nearly over waits for the next one.
-With "Pause when OSD is open" on (the default), the game waits while you
+With "Pause when OSD is Open" on (the default), the game waits while you
 choose, so you can also open the OSD once the VS screen is up.
 
 Every kode on the page comes from the game's own kode table, the same in
@@ -99,11 +119,11 @@ the game stops asking, and a kode picked then just waits.
 
 ## Move List
 
-OSD page "Move List / Finishing Moves": choose the fighter under
-"Character" and turn "Move List" on. The core shows that fighter's moves
-over the game, which waits while the window is up; turn it off in the OSD
-to play on. Changing the Character with the window on shows the new
-fighter's moves. The window lists:
+OSD "Move List": pick a fighter (the option steps through them in
+alphabetical order). The core shows that fighter's moves over the UMK3
+logo, and the game waits while the window is up; set the option back to
+Off to play on. Stepping to the next fighter with the window up shows
+that fighter's moves. The window lists:
 
 - Special moves (with Shang Tsung's morphs), from MAME's command list
 - Finishing moves: name, input and how far to stand (see Distances
@@ -128,16 +148,16 @@ How the inputs read (the window and the OSD lines alike):
 
 ## Finishing Moves
 
-The same page enters finishing moves for you. Its lines, below Character,
-list that fighter's moves (Fatality 1 and 2, Stage Fatality, Animality,
-Friendship, Babality: the ones it has), each by name and input, and the
-Mercy every fighter shares. The game does not name its fatalities; the
-names here say what each one shows. The Move List window has where to
-stand for each.
+OSD page "Finishing Moves" enters finishing moves for you. Pick the
+fighter under "Character"; the lines below it list that fighter's moves
+(Fatality 1 and 2, Stage Fatality, Animality, Friendship, Babality: the
+ones it has), each by name and input, and the Mercy every fighter shares.
+The game does not name its fatalities; the names here say what each one
+shows. The Move List window has where to stand for each.
 
-At FINISH HIM, stand at the distance the Move List gives, open the OSD
-and pick the move: the core enters it on the winner's controls, player 1
-or 2, turned to the side the winner faces. With "Pause when OSD is open" on (the
+At FINISH HIM, stand at the distance the Move List gives, open the OSD and
+pick the move: the core enters it on the winner's controls, player 1 or 2,
+turned to the side the winner faces. With "Pause when OSD is Open" on (the
 default) FINISH HIM waits while you choose. The fighter must be the
 winner's (a message says so if not), and the game's own rules still apply:
 
