@@ -1,28 +1,40 @@
 #!/usr/bin/env python3
 # ============================================================================
-#  move_list.py - the pages of the Move List window (MK3, UMK3)
+#  move_list.py - the pages of the Move List window (MK3, UMK3) and the
+#  Secret Codes window (NBA Hangtime, NBA Maximum Hangtime, 2 On 2 Open Ice
+#  Challenge)
 #
-#  The OSD's "Move List" option has rtl/wunit_movelist.sv draw a window over
-#  the game with the moves of the fighter picked under "Character": the
-#  special moves (tools/move_list.txt, from MAME's command.dat), Shang
-#  Tsung's morphs, and the finishing moves with their names, inputs and
-#  where to stand (tools/finishing_moves.py: the programs the core enters,
-#  in the same notation as the OSD lines, and the distances it measured).
+#  The OSD's "Move List" option (Off or a fighter) has rtl/wunit_movelist.sv
+#  draw a window over the game's logo (tools/movelist_logo.py) with the
+#  fighter's moves: the special moves (tools/move_list.txt, from MAME's
+#  command.dat), Shang Tsung's morphs, and the finishing moves with their
+#  names, inputs and where to stand (tools/finishing_moves.py: the programs
+#  the core enters, in the same notation as the OSD lines, and the
+#  distances it measured).
 #
 #  One page per fighter and game: UMK3 (pages 0-22), MK3 rev 2.x (23-37),
-#  MK3 rev 1.x / p4.0 (38-52), each in the game's character order. A page
+#  MK3 rev 1.x / p4.0 (38-52), each in the OSD's order (alphabetical,
+#  finishing_moves.OPT_ORDER), so the option picks page first + n - 1. The
+#  Hangtimes' Secret Codes window (tools/hangtime_secrets.py: the secret
+#  players and match-up codes the program ROMs hold, with who each player
+#  is) has two pages per variant from 53 on (variant v: 51 + 2v the secret
+#  players and match-up codes, 52 + 2v the hidden NBA players) and page 61,
+#  shown when the MRA names no variant; Open Ice's (tools/openice_secrets.py)
+#  pages 62-64 the secret players with who they are, 65 the Tonight's Game
+#  codes, 66 the face-off codes. Long full names that do not fit two to a
+#  row lose their first name to an initial. A page
 #  is 30 rows of 56 characters; a row is a list of segments, runs of text in
 #  one colour (the blanks between them are not stored). This writes four
 #  ROM images for $readmemh:
 #
-#    rtl/wunit_movelist_row.hex   2048 x 12 bits, address {page, row}: the
+#    rtl/wunit_movelist_row.hex   4096 x 12 bits, address {page, row}: the
 #                                 row's first segment (0: empty row)
-#    rtl/wunit_movelist_seg.hex   2048 x 32 bits, a segment: [12:0] its
-#                                 first character in the text ROM, [18:13]
-#                                 its length, [24:19] its column, [26:25]
+#    rtl/wunit_movelist_seg.hex   4096 x 29 bits, a segment: [13:0] its
+#                                 first character in the text ROM, [19:14]
+#                                 its length, [25:20] its column, [27:26]
 #                                 its colour (0 white, 1 yellow, 2 cyan,
-#                                 3 gray), [27] the row's last segment
-#    rtl/wunit_movelist_text.hex  8192 x 7 bits: the character codes - 32
+#                                 3 gray), [28] the row's last segment
+#    rtl/wunit_movelist_text.hex  16384 x 7 bits: the character codes - 32
 #                                 (segments with the same text share it)
 #    rtl/wunit_movelist_font.hex  96 x 8 rows of 8 bits (bit x: column x,
 #                                 the left one bit 0), characters 32-127
@@ -44,6 +56,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import finishing_moves as fm  # noqa: E402
+import hangtime_secrets as hs  # noqa: E402
+import openice_secrets as oi  # noqa: E402
 
 REPO = fm.REPO
 TXT = os.path.join(REPO, "tools", "move_list.txt")
@@ -51,16 +65,18 @@ OUT = {k: os.path.join(REPO, "rtl", f"wunit_movelist_{k}.hex") for k in ("row", 
 
 COLS, ROWS = 56, 30
 LEFT, RIGHT = 1, 54                 # the columns text uses
-PAGES = 64                          # row ROM pages (53 used)
-SEG_SIZE = 2048                     # segment ROM entries
-TEXT_SIZE = 8192                    # text ROM characters
+PAGES = 128                         # row ROM pages (67 used)
+HANGTIME_PAGE = 53                  # the Secret Codes window's first page (Hangtimes)
+OPENICE_PAGE = 62                   # Open Ice's first
+SEG_SIZE = 4096                     # segment ROM entries
+TEXT_SIZE = 16384                   # text ROM characters
 WHITE, YELLOW, CYAN, GRAY = range(4)
 
-# the games: (set in move_list.txt, the finishing moves table, characters, title)
+# the games: (set in move_list.txt, the finishing moves table, family, logo, title)
 GAMES = [
-    ("umk3", 1, 23, "Ultimate Mortal Kombat 3"),
-    ("mk3", 1, 15, "Mortal Kombat 3 rev 2"),
-    ("mk3r10", 2, 15, "Mortal Kombat 3 rev 1"),
+    ("umk3", 1, "umk3", 2, "Ultimate Mortal Kombat 3"),
+    ("mk3", 1, "mk3", 1, "Mortal Kombat 3 rev 2"),
+    ("mk3r10", 2, "mk3", 1, "Mortal Kombat 3 rev 1"),
 ]
 
 FOOTER = [
@@ -192,7 +208,7 @@ def morph_rows(morphs):
 
 def page(game, table, c, programs, sp):
     name = fm.CHARS[c]
-    title = GAMES[[g[0] for g in GAMES].index(game)][3]
+    title = GAMES[[g[0] for g in GAMES].index(game)][4]
     moves = sp[(game, name)]
     fin = finishing(programs, table, c)
     body = [row((name.upper(), CYAN), (" " * (RIGHT - LEFT + 1 - len(name) - len(title)), WHITE), (title, GRAY)),
@@ -236,14 +252,208 @@ def page(game, table, c, programs, sp):
     return rows
 
 
+def fit(rows, label):
+    """the page's rows, checked"""
+    if len(rows) > ROWS:
+        raise SystemExit(f"{label}: {len(rows)} rows")
+    for r in rows:
+        if r and r[0] + width(r) - 1 > RIGHT:
+            raise SystemExit(f"{label}: too wide: {''.join(t for t, _ in r[1])!r}")
+    return rows + [None] * (ROWS - len(rows))
+
+
+def columns(items, ncol, nrows):
+    """items laid out down ncol columns: [[item or None] * ncol] * nrows"""
+    return [[items[c * nrows + r] if c * nrows + r < len(items) else None for c in range(ncol)]
+            for r in range(nrows)]
+
+
+def title_row(left, right):
+    return row((left, CYAN), (" " * (RIGHT - LEFT + 1 - len(left) - len(right)), WHITE), (right, GRAY))
+
+
+def shorten(name):
+    """a full name with its first name cut to an initial"""
+    first, _, rest = name.partition(" ")
+    return f"{first[0]}. {rest}" if rest and len(first) > 2 else name
+
+
+def two_columns(cells, label):
+    """cells (code segments of one width, full name) down two columns: the
+    rows. The names are gray; a name too long for the page loses its first
+    name to an initial"""
+    cells = [(segs, name) for segs, name in cells]
+    nrows = -(-len(cells) // 2)
+    w0 = sum(len(t) for t, _ in cells[0][0])
+    avail = RIGHT - LEFT + 1
+    while True:
+        lw = max(w0 + len(n) for _, n in cells[:nrows])
+        rw = max(w0 + len(n) for _, n in cells[nrows:]) if len(cells) > nrows else 0
+        if lw + 2 + rw <= avail:
+            gap = 2
+            break
+        if lw + 1 + rw <= avail:
+            gap = 1
+            break
+        # shorten the longest name of the wider column
+        side = range(nrows) if lw >= rw else range(nrows, len(cells))
+        k = max(side, key=lambda k: len(cells[k][1]))
+        short = shorten(cells[k][1])
+        if short == cells[k][1]:
+            raise SystemExit(f"{label}: {cells[k][1]!r} does not fit")
+        cells[k] = (cells[k][0], short)
+    out = []
+    for r in range(nrows):
+        segs, name = cells[r]
+        line = segs + [(name, GRAY)]
+        if r + nrows < len(cells):
+            segs2, name2 = cells[r + nrows]
+            line = pad(line, lw + gap) + segs2 + [(name2, GRAY)]
+        out.append(row(*line))
+    return out
+
+
+def head_row(left, right, hint=None):
+    """a page's first row: the list's name (cyan), a hint (gray), the game (gray, right)"""
+    segs = [(left, CYAN)] + ([("  " + hint, GRAY)] if hint else [])
+    w = sum(len(t) for t, _ in segs)
+    return row(*segs, (" " * (RIGHT - LEFT + 1 - w - len(right)), WHITE), (right, GRAY))
+
+
+def hangtime_pages(v, players, codes):
+    """the two pages of a variant: the secret players (name, PIN, who) and
+    the match-up codes; the hidden NBA players (name, who)"""
+    game, rev, _ = hs.VARIANTS[v]
+    nba = [n for n, _ in players].index("PIPPEN")
+    staff = sorted(players[:nba])
+    stars = sorted(n for n, _ in players[nba:])
+    shown = lambda n: n.replace(" ", "_")
+    title = game if v == 1 else f"{game.replace('NBA ', '')} {rev}"
+
+    p1 = [head_row("SECRET PLAYERS", title, "_ is SPC")]
+    p1 += two_columns([([(shown(n).ljust(7), WHITE), (shown(pin) + " ", YELLOW)], hs.full_name(n))
+                       for n, pin in staff], f"{title} 1")
+    p1 += [None, head_row("MATCH-UP CODES", "", "Turbo, Shoot, Pass: the digits")]
+    for cells in columns(codes, 2, -(-len(codes) // 2)):
+        segs = []
+        for k, cell in enumerate(cells):
+            if cell:
+                segs += [(" " * (27 * k - sum(len(t) for t, _ in segs)), WHITE),
+                         (cell[0] + " ", YELLOW), (cell[1], WHITE)]
+        p1.append(row(*segs))
+
+    p2 = [head_row("HIDDEN NBA PLAYERS", title)]
+    p2 += two_columns([([(shown(n).ljust(7), WHITE)], hs.full_name(n)) for n in stars], f"{title} 2")
+    foot = [row(("Enter Name", YELLOW), (": the name (", GRAY), ("END", YELLOW), (" if shorter), ", GRAY),
+                ("PIN 0000", YELLOW))]
+    p2 = p2 + [None] * (ROWS - len(p2) - len(foot)) + foot
+    return fit(p1, f"{title} 1"), fit(p2, f"{title} 2")
+
+
+def hangtime_missing():
+    """the page shown when the MRA names no variant"""
+    return fit([title_row("SECRET CODES", "NBA Hangtime"), None,
+                row(("This list needs the MRA files of this release of", WHITE)),
+                row(("the core: they tell it which version of the game", WHITE)),
+                row(("this is.", WHITE))], "Hangtime: no variant")
+
+
+OI_PLAYER_PAGES = 3
+OI_FOOT_PLAYERS = [
+    [("Enter initials for record keeping?", YELLOW), (" YES, then the", GRAY)],
+    [("initials (", GRAY), ("_", YELLOW), (" is ", GRAY), ("SP", YELLOW), ("), the birth month and the day.", GRAY)],
+]
+OI_FOOT_CODES = [
+    [("A+B", YELLOW), (" at once   ", GRAY), ("(X)", YELLOW), (" hold X through the moves after it", GRAY)],
+    [("Each step within a quarter second   ", GRAY), ("L R", YELLOW), (": as on screen", GRAY)],
+]
+OI_WHERE = {
+    "game": ("ON THE TONIGHT'S GAME SCREEN",
+             [[("Head codes: your own player, or your team's goalie.", GRAY)]]),
+    "faceoff": ("BEFORE THE FIRST FACE-OFF",
+                [[("After Tonight's Game, before the help windows show.", GRAY)],
+                 [("Speed Up to Fast Turbo Recovery: your player, one", GRAY)],
+                 [("of them at a time. Tournament Mode, Unlimited", GRAY)],
+                 [("Turbo: humans on both teams. Turbo Checks Off is in", GRAY)],
+                 [("the program but in no published list.", GRAY)]]),
+}
+
+
+def openice_pages():
+    """Open Ice's Secret Codes pages: the secret players (initials, birthday,
+    who; three pages), the codes (Tonight's Game, before the first
+    face-off)"""
+    players, codes = oi.load()
+    players = sorted(players)
+    head = title_row("2 ON 2 OPEN ICE CHALLENGE", "")
+    out = []
+    per = -(-len(players) // OI_PLAYER_PAGES)
+    for k in range(OI_PLAYER_PAGES):
+        part = players[k * per:(k + 1) * per]
+        span = f"{part[0][0].replace(' ', '_')} - {part[-1][0].replace(' ', '_')}"
+        rows = [head_row("SECRET PLAYERS", "2 On 2 Open Ice Challenge", span)]
+        rows += two_columns([([(i.replace(" ", "_") + " ", WHITE), (f"{m} {d}".ljust(7), YELLOW)],
+                              oi.full_name(i, m, d)) for i, m, d in part], f"Open Ice players {k + 1}")
+        foot = [row(*f) for f in OI_FOOT_PLAYERS]
+        rows = rows + [None] * (ROWS - len(rows) - len(foot)) + foot
+        out.append((f"openice players {k + 1}", fit(rows, f"Open Ice players {k + 1}")))
+    for where in ("game", "faceoff"):
+        title, notes = OI_WHERE[where]
+        mine = [(n, s) for w, n, s in codes if w == where]
+        nw = max(len(n) for n, _ in mine) + 2
+        rows = [head, None, row((title, CYAN))]
+        for n, s in mine:
+            # the inputs, wrapped at the right edge under their column
+            words, line, first = s.split(), "", True
+            for w in words + [None]:
+                if w is not None and len(line) + len(w) + (1 if line else 0) <= RIGHT - LEFT + 1 - nw:
+                    line += (" " if line else "") + w
+                    continue
+                rows.append(row((n.ljust(nw) if first else " " * nw, WHITE), (line, YELLOW)))
+                first, line = False, w or ""
+        rows.append(None)
+        rows += [row(*f) for f in notes]
+        foot = [row(*f) for f in OI_FOOT_CODES]
+        rows = rows + [None] * (ROWS - len(rows) - len(foot)) + foot
+        out.append((f"openice codes {where}", fit(rows, f"Open Ice codes {where}")))
+    return out
+
+
+def page_logo(k):
+    """what page k is drawn over: 0 the dimmed game, else the logo
+    (movelist_logo.py: 1 MK3, 2 UMK3, 3 Open Ice, 4 NBA Hangtime, 5 NBA
+    Maximum Hangtime)"""
+    first = 0
+    for _, _, family, logo, _ in GAMES:
+        n = len(fm.OPT_ORDER[family])
+        if k < first + n:
+            return logo
+        first += n
+    if HANGTIME_PAGE <= k < HANGTIME_PAGE + 2 * len(hs.VARIANTS):
+        return 4 if k < HANGTIME_PAGE + 2 else 5
+    if OPENICE_PAGE <= k < OPENICE_PAGE + OI_PLAYER_PAGES + 2:
+        return 3
+    return 0
+
+
 def pages():
     """[(label, rows)] in page order"""
     programs = fm.core_programs()
     sp = specials()
     out = []
-    for game, table, n, _ in GAMES:
-        for c in range(n):
+    for game, table, family, _, _ in GAMES:
+        for c in fm.OPT_ORDER[family]:
             out.append((f"{game} {fm.CHARS[c]}", page(game, table, c, programs, sp)))
+    if len(out) != HANGTIME_PAGE:
+        raise SystemExit(f"{len(out)} Move List pages, the Secret Codes window starts at {HANGTIME_PAGE}")
+    var, codes = hs.load()
+    for v in sorted(var):
+        p1, p2 = hangtime_pages(v, var[v], codes)
+        out += [(f"hangtime {v} players", p1), (f"hangtime {v} nba", p2)]
+    out.append(("hangtime none", hangtime_missing()))
+    if len(out) != OPENICE_PAGE:
+        raise SystemExit(f"Open Ice's pages start at {len(out)}, not {OPENICE_PAGE}")
+    out += openice_pages()
     return out
 
 
@@ -277,7 +487,7 @@ def images():
                     if at < 0:
                         at = len(text)
                         text += t
-                    seg.append(at | (len(t) << 13) | (col << 19) | (colour << 25) | ((n == len(sg) - 1) << 27))
+                    seg.append(at | (len(t) << 14) | (col << 20) | (colour << 26) | ((n == len(sg) - 1) << 28))
             rows.append(lists[sg])
     rows += [0] * (PAGES * 32 - len(rows))
     if len(seg) > SEG_SIZE or len(text) > TEXT_SIZE:
