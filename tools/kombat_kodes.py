@@ -13,7 +13,8 @@
 #
 #  The kodes themselves are fixed in the core. This script checks them:
 #    - the OSD pages (Arcade-Midway-Wolf-Unit.sv: "Kombat Kodes" links to
-#      five category pages P4-P8; status bits 18-67, then 73, in order) and
+#      four category pages P4-P7 and lists the Ultimate Kombat Kodes itself;
+#      status bits KODE_BITS, in order) and
 #      the player's table (rtl/wunit_kodes.sv) list the same digits in the
 #      same order, the UMK3-only lines (H6) are the ones MK3 lacks and the
 #      MK3-only line (h6, its Smoke kode) the one UMK3 lacks
@@ -52,7 +53,9 @@ RAM_WORDS = 0x40000             # 512 KB
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TOP = os.path.join(REPO, "Arcade-Midway-Wolf-Unit.sv")
 PLAYER = os.path.join(REPO, "rtl", "wunit_kodes.sv")
-KODE_BITS = list(range(18, 68)) + [73]   # status bits of the kodes, in order
+# status bits of the kodes, in order (57-63 went to the finishing moves,
+# whose triggers are shorter there: their kodes moved to 103-109)
+KODE_BITS = list(range(18, 57)) + list(range(103, 110)) + list(range(64, 68)) + [73]
 
 
 class NoMatch(Exception):
@@ -136,8 +139,12 @@ def core_kodes():
     against the player's table."""
     top = open(TOP, encoding="utf-8").read()
     osd, bits = [], []
-    for m in re.finditer(r'"(H6|h6)?P[4-8]R\[(\d+)\],([^;]*?) (\d{3}-\d{3}|\d{5}-\d{5});"', top):
-        bits.append(int(m.group(2)))
+    # a trigger is R[n], or Rx / rx (MiSTer's one-character form: x is
+    # 0-9 A-V, bit x or 32 + x)
+    for m in re.finditer(r'"(H6|h6)?P[3-7](R\[\d+\]|[Rr][0-9A-V]), ?([^;]*?) (\d{3}-\d{3}|\d{5}-\d{5});"', top):
+        t = m.group(2)
+        bits.append(int(t[2:-1]) if t[1] == "[" else
+                    "0123456789ABCDEFGHIJKLMNOPQRSTUV".index(t[1]) + (32 if t[0] == "r" else 0))
         osd.append((len(osd), {"H6": "umk3", "h6": "mk3"}.get(m.group(1)), m.group(3), m.group(4).replace("-", "")))
     table = {}
     for m in re.finditer(r"6'd(\d+):\s+kode = (vs|ukk)\((?:24|40)'h([0-9_]+)\)", open(PLAYER, encoding="utf-8").read()):
