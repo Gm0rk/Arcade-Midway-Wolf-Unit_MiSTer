@@ -73,14 +73,17 @@ the original board.
   pitch and tempo)
 - CMOS saved as NVRAM: settings, audits and high scores survive power-off
   (OSD "Save Settings")
-- DIP switches in the OSD, taken from MAME
+- DIP switches in the OSD, taken from MAME, with Service Credit and Tilt
 - Up to four players (Open Ice, NBA Hangtime) or three (Rampage)
-- Pause (button or OSD), service mode switch; Service Credit and Tilt in the OSD
+- Pause (button or OSD), service mode switch
 - Game extras entered from the OSD: hidden developer menus (MK3, UMK3, NBA
   Hangtime), UMK3's cut Character Endings restored, Kombat Kodes and
   finishing moves (MK3, UMK3); see each game's page
 - Move List (MK3, UMK3): every fighter's special moves and finishing moves,
-  shown over the game from the OSD
+  picked by fighter in the OSD and shown over the game's logo
+- Secret Codes (NBA Hangtime, Maximum Hangtime, Open Ice): every secret
+  player, with who each one is, and every code the game has, shown over
+  the game's logo from the OSD
 
 ## CRT Adjust
 
@@ -113,7 +116,7 @@ the untouched HDMI picture.
 
 Each game's buttons are on its page in `docs/`. Every game also has Start,
 Coin, Test (service mode) and Pause. Service Credit and Tilt are OSD items
-on the Controls page.
+on the DIP Switches page.
 
 On the first start the CMOS is empty: the game restores its factory settings
 and shows "Errors detected - any button to continue". Press a button, then
@@ -140,7 +143,7 @@ A 32 MB SDRAM module is needed (the largest games use 25 MB of ROM).
   (@asturur)
 - Move List special moves: MAME's command.dat (Command List by Fabricio
   Coroquer, revised by AntoPISA); window font: the MiSTer OSD's
-  (Main_MiSTer)
+  (Main_MiSTer); backgrounds: the games' own logos (Midway)
 - [Template_MiSTer](https://github.com/MiSTer-devel/Template_MiSTer),
   [MiSTer-CRT-Adjust](https://github.com/rmonic79/MiSTer-CRT-Adjust)
 
