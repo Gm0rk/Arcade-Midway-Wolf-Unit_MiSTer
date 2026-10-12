@@ -70,7 +70,8 @@ function automatic [40:0] ukk(input [39:0] d);
 	ukk = {1'b1, d};
 endfunction
 
-// the OSD's kodes, in its order (status bits 18-67, then 73, in the top level)
+// the OSD's kodes, in its order (status bits 18-56, 103-109, 64-67, then 73 in
+// the top level: tools/kombat_kodes.py KODE_BITS)
 function automatic [40:0] kode(input [5:0] n);
 	case (n)
 		// fighting (11-16 UMK3 only)
