@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 # ============================================================================
-#  check.py - the Move List window's frames against tools/move_list.py
+#  check.py - the Move List / Secret Codes window's frames against
+#  tools/move_list.py
 #
 #  Runs obj_dir/Vwunit_movelist for each page (and once with the window
 #  off) and compares every dot of the picture with the page drawn here from
-#  tools/move_list.py's pages and font: the test picture dimmed to a quarter,
-#  the characters in their colours on the 7 x 8 grid at dot 4, line 7.
+#  tools/move_list.py's pages and font: the page's logo (rtl/
+#  wunit_movelist_logo.hex and _pal.hex, each dot 2 x 2) or the test
+#  picture dimmed to a quarter, the characters in their colours on the
+#  7 x 8 grid at dot 4, line 7.
 #
 #  Usage: check.py [PAGE ...]      (default: every page)
 #
@@ -24,13 +27,23 @@ import move_list as ml  # noqa: E402
 W, H, X0, Y0, CW, CH = 400, 254, 4, 7, 7, 8
 INK = {0: (0xFF, 0xFF, 0xFF), 1: (0xFF, 0xE0, 0x40), 2: (0x60, 0xE0, 0xFF), 3: (0xA0, 0xA0, 0xA0)}
 SIM = os.path.join(HERE, "obj_dir", "Vwunit_movelist")
+RTL = os.path.join(HERE, "..", "..", "rtl")
+LW, LH = 200, 127
 
 
-def expected(rows, font):
+def hexfile(name):
+    return [int(l, 16) for l in open(os.path.join(RTL, f"wunit_movelist_{name}.hex")) if l.strip()]
+
+
+def expected(rows, font, logo, logos, pal):
     img = bytearray()
     for y in range(H):
         for x in range(W):
-            img += bytes([(x & 0xFF) >> 2, (y & 0xFF) >> 2, 0x80 >> 2])
+            if logo:
+                c = pal[16 * (logo - 1) + logos[LW * LH * (logo - 1) + LW * (y >> 1) + (x >> 1)]]
+                img += bytes([c >> 16, (c >> 8) & 0xFF, c & 0xFF])
+            else:
+                img += bytes([(x & 0xFF) >> 2, (y & 0xFF) >> 2, 0x80 >> 2])
     for r, row in enumerate(rows):
         if not row:
             continue
@@ -47,9 +60,10 @@ def expected(rows, font):
     return bytes(img)
 
 
-def frame(page, off=False):
+def frame(page, off=False, logo=0):
     with tempfile.NamedTemporaryFile(suffix=".ppm") as f:
-        r = subprocess.run([SIM, str(page), f.name] + (["-off"] if off else []), capture_output=True, text=True)
+        r = subprocess.run([SIM, str(page), f.name, "-logo", str(logo)] + (["-off"] if off else []),
+                           capture_output=True, text=True)
         data = open(f.name, "rb").read()
     return r, data[data.index(b"255\n") + 4:]
 
@@ -57,15 +71,18 @@ def frame(page, off=False):
 def main():
     pages = ml.pages()
     font = ml.font_rows()
+    logos, pal = hexfile("logo"), hexfile("pal")
     which = [int(a) for a in sys.argv[1:]] or range(len(pages))
     bad = 0
-    r, _ = frame(0, off=True)
-    print(r.stdout.strip())
-    bad += r.returncode != 0
+    for logo in (0, 2):
+        r, _ = frame(0, off=True, logo=logo)
+        print(r.stdout.strip())
+        bad += r.returncode != 0
     for k in which:
         label, rows = pages[k]
-        _, got = frame(k)
-        want = expected(rows, font)
+        logo = ml.page_logo(k)
+        _, got = frame(k, logo=logo)
+        want = expected(rows, font, logo, logos, pal)
         diff = sum(1 for i in range(0, len(want), 3) if got[i:i + 3] != want[i:i + 3])
         print(f"page {k:2d} {label:24s} {'OK' if not diff else f'{diff} dots differ'}")
         bad += diff != 0
