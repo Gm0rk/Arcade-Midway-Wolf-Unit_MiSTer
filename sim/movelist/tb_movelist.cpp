@@ -1,16 +1,19 @@
 // ============================================================================
-//  tb_movelist.cpp - the Move List window (rtl/wunit_movelist.sv) on its own
+//  tb_movelist.cpp - the Move List / Secret Codes window
+//  (rtl/wunit_movelist.sv) on its own
 //
 //  Feeds the window the Wolf Unit raster (MAME's set_raw(8000000, 506, 101,
 //  501, 289, 20, 274): 506 dots a line, 289 lines, the picture dots 101-500
 //  of lines 20-273) on a 96 MHz clock with the 8 MHz dot enable, the board's
 //  outputs changing with each ce_pix as wunit_video.sv's do, and a test
-//  picture (R = x, G = y, B = 0x80). It writes the third frame's picture as
-//  it goes out (the dot before each ce_pix) to a PPM file, which check.py
-//  compares with the page as tools/move_list.py draws it.
+//  picture (R = x, G = y, B = 0x80). It writes the third frame's picture
+//  as it goes out (the dot before each ce_pix) to a PPM file, which
+//  check.py compares with the page as tools/move_list.py draws it (over
+//  the dimmed picture or a logo).
 //
-//  Usage: Vwunit_movelist PAGE OUT.ppm [-off]
-//    -off   the window off: the picture must come out unchanged
+//  Usage: Vwunit_movelist PAGE OUT.ppm [-off] [-logo N]
+//    -off      the window off: the picture must come out unchanged
+//    -logo N   behind the text: 0 the dimmed picture, 1 MK3's logo, 2 UMK3's
 //
 //  Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
 // ============================================================================
@@ -28,16 +31,24 @@ static const int W = H1 - H0, H = V1 - V0;
 int main(int argc, char **argv)
 {
 	if (argc < 3) {
-		fprintf(stderr, "usage: %s PAGE OUT.ppm [-off]\n", argv[0]);
+		fprintf(stderr, "usage: %s PAGE OUT.ppm [-off] [-logo N]\n", argv[0]);
 		return 2;
 	}
 	int page = atoi(argv[1]);
-	bool off = argc > 3 && !strcmp(argv[3], "-off");
+	bool off = false;
+	int logo = 0;
+	for (int i = 3; i < argc; i++) {
+		if (!strcmp(argv[i], "-off"))
+			off = true;
+		else if (!strcmp(argv[i], "-logo") && i + 1 < argc)
+			logo = atoi(argv[++i]);
+	}
 
 	Verilated::commandArgs(argc, argv);
 	Vwunit_movelist *m = new Vwunit_movelist;
 	m->enable = off ? 0 : 1;
 	m->page = page;
+	m->logo = logo;
 
 	std::vector<unsigned char> img(W * H * 3);
 	int bad = 0;
