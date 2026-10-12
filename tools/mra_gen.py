@@ -30,7 +30,11 @@
 #  Kombat Kode and finishing move players (MK3, UMK3: tools/kombat_kodes.py;
 #  2 bytes little endian; 0: none), then (MK3, UMK3) the core's finishing
 #  move table for the set (tools/finishing_moves.py: 0 none, 1 UMK3 / MK3
-#  2.x, 2 MK3 1.x) and a 0.
+#  2.x, 2 MK3 1.x) or (NBA Hangtime, Maximum Hangtime) the set's secret
+#  player variant (tools/hangtime_secrets.py: 0 none, 1-4), and a 0.
+#  DIP switches: none. The core has every game's switches in its own OSD
+#  page (with Service Credit and Tilt), MAME's defaults first; a family
+#  left out of OSD_DIPS would get MAME's as <switches>.
 #
 #  md5: the value Main_MiSTer computes while assembling the ROM - every part
 #  in MRA order (each repeat counted), before interleaving. A wrong md5 makes
@@ -62,6 +66,7 @@ from datetime import date
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import cut_content  # noqa: E402
 import finishing_moves  # noqa: E402
+import hangtime_secrets  # noqa: E402
 import kombat_kodes  # noqa: E402
 
 # ----------------------------------------------------------------------------
@@ -97,8 +102,8 @@ GAME_IDS = {
 # per input-port layout: MRA button names (MiSTer B1..B6 in that order) and
 # the default pad mapping; players from MAME's ports
 LAYOUTS = {
-    "mk3":      (["High Punch", "Block", "High Kick", "Low Punch", "Low Kick", "Run"],
-                 "Y,R,X,B,A,L", 2),
+    "mk3":      (["High Punch", "Low Punch", "High Kick", "Low Kick", "Block", "Run"],
+                 "Y,B,X,A,R,L", 2),
     "wwfmania": (["Punch", "Defense", "Power Punch", "Kick", "Power Kick"],
                  "Y,R,X,B,A", 2),
     "openice":  (["Turbo", "Shoot / Block", "Pass / Steal"], "R,B,A", 4),
@@ -534,12 +539,16 @@ def kode_state(entries, family, files):
 
 
 def finish_table(entries, family, files):
-    """Config byte 14: the core's finishing move table for the set (0:
-    none). Needs the ROM files."""
+    """Config byte 14: the core's finishing move table for the set (MK3,
+    UMK3) or its secret player variant (the Hangtimes); 0: none. Needs the
+    ROM files."""
     img, _ = assemble(entries, files)
     if img is None:
         return 0
-    return finishing_moves.config(family, bytes(img[PROG_BASE:PROG_BASE + PROG_SIZE]))
+    prog = bytes(img[PROG_BASE:PROG_BASE + PROG_SIZE])
+    if family == "nbahangt":
+        return hangtime_secrets.config(family, prog)
+    return finishing_moves.config(family, prog)
 
 
 def assemble(entries, files):
@@ -709,6 +718,12 @@ def entry_xml(e):
     raise ValueError(e)
 
 
+# families whose DIP switches the core puts in its own OSD page (with
+# Service Credit and Tilt): their MRAs have no <switches>, so the
+# framework's DIP Switches entry stays hidden (all of them)
+OSD_DIPS = ("mk3", "umk3", "wwfmania", "openice", "nbahangt", "rmpgwt")
+
+
 def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default, used, alt=0, kst=0, fin=0):
     names, pad, players = LAYOUTS[family if family != "umk3" else "mk3"]
     lines = ["<misterromdescription>"]
@@ -721,9 +736,10 @@ def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default
     lines.append(f"\t<category>{CATEGORIES[family]}</category>")
     lines.append(f"\t<rbf>{RBF}</rbf>")
     lines.append(f"\t<remark>{players} players</remark>")
-    lines.append(f'\t<switches default="{dsw_default & 0xFF:02X},{dsw_default >> 8:02X}">')
-    lines += dip_xml(dips, used)
-    lines.append("\t</switches>")
+    if family not in OSD_DIPS:
+        lines.append(f'\t<switches default="{dsw_default & 0xFF:02X},{dsw_default >> 8:02X}">')
+        lines += dip_xml(dips, used)
+        lines.append("\t</switches>")
     bnames = names + ["Start", "Coin", "Test", "Pause"]
     bdef = pad.split(",") + ["Start", "Select", "-", "-"]
     lines.append(f'\t<buttons names="{",".join(bnames)}" default="{",".join(bdef)}"/>')
@@ -738,7 +754,7 @@ def write_mra(path, game, family, zips, entries, slotmap, md5, dips, dsw_default
         lines.append(f"0x{alt:07X} program ROM again with the cut-content patches (OSD)")
     lines.append("\t</romstruct>")
     cfg = [GAME_IDS[family]] + slotmap + [0xFF, (alt >> 13) & 0xFF, alt >> 21, kst & 0xFF, kst >> 8]
-    if family in finishing_moves.NCHAR:
+    if family in finishing_moves.NCHAR or family == "nbahangt":
         cfg += [fin, 0]
     lines.append('\t<rom index="1">')
     lines.append("\t\t<part>" + " ".join(f"{b:02X}" for b in cfg) + "</part>")
@@ -842,7 +858,7 @@ def main():
               + "".join("-" if x == 0xFF else str(x) for x in slotmap)
               + (f" cut {alt:#x}" if alt else "")
               + (f" kodes {kst:#x}" if kst else "")
-              + (f" finish {fin}" if fin else "")
+              + ((f" secrets {fin}" if family == "nbahangt" else f" finish {fin}") if fin else "")
               + f" {md5} {status}  {os.path.relpath(path, args.out)}")
     sys.exit(1 if failures else 0)
 
