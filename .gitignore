@@ -37,6 +37,7 @@ c5_pin_model_dump.txt
 *.xml
 *_netlist
 *.cdf
+*.zip
 **/.DS_Store
 __pycache__/
 obj_dir/
