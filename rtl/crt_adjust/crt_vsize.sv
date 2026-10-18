@@ -610,12 +610,22 @@ module crt_vsize #(
         end
     endfunction
 
-    function [7:0] isqrt_l(input [31:0] xr);
+    // (the low half in two stages too: isqrt_m then isqrt_l, a register
+    // between them, for timing at 96 MHz; same result as the four steps)
+    function [31:0] isqrt_m(input [31:0] xr);
         reg [15:0] x, res;
         begin
             x = xr[31:16]; res = xr[15:0];
             if (x >= res + 16'h0040) begin x = x - (res + 16'h0040); res = (res >> 1) + 16'h0040; end else res = res >> 1;
             if (x >= res + 16'h0010) begin x = x - (res + 16'h0010); res = (res >> 1) + 16'h0010; end else res = res >> 1;
+            isqrt_m = {x, res};
+        end
+    endfunction
+
+    function [7:0] isqrt_l(input [31:0] xr);
+        reg [15:0] x, res;
+        begin
+            x = xr[31:16]; res = xr[15:0];
             if (x >= res + 16'h0004) begin x = x - (res + 16'h0004); res = (res >> 1) + 16'h0004; end else res = res >> 1;
             if (x >= res + 16'h0001) begin x = x - (res + 16'h0001); res = (res >> 1) + 16'h0001; end else res = res >> 1;
             isqrt_l = res[7:0];
@@ -630,12 +640,15 @@ module crt_vsize #(
     reg  [15:0] t_sqb_r, t_sqb_g, t_sqb_b;
     reg  [15:0] t_bl_r, t_bl_g, t_bl_b;
     reg  [31:0] t_h1_r, t_h1_g, t_h1_b;
+    reg  [31:0] t_h2_r, t_h2_g, t_h2_b;
+    reg  [23:0] ring_d;                  // ring_q, registered: the RAM's output selection gets a clock of its own
     reg  [23:0] t_out;
     reg         t_out_v;
     initial begin
         t_px=0; t_px_l=0; t_fetch=0; t_al=0;
         t_sqa_r=0; t_sqa_g=0; t_sqa_b=0; t_sqb_r=0; t_sqb_g=0; t_sqb_b=0;
         t_bl_r=0; t_bl_g=0; t_bl_b=0; t_h1_r=0; t_h1_g=0; t_h1_b=0;
+        t_h2_r=0; t_h2_g=0; t_h2_b=0; ring_d=0;
         t_out=0; t_out_v=0;
     end
 
@@ -659,32 +672,41 @@ module crt_vsize #(
             end
         end
         // fasi (indirizzo registrato -> dato A in ring_q durante la fase 3,
-        // dato B durante la fase 4; quadrato calcolato direttamente li`):
+        // dato B durante la fase 4; quadrato calcolato direttamente li`).
+        // This core: ring_q registered again (ring_d, A in phase 4, B in 5)
+        // and the square root's low half split, so the pixel takes phases
+        // 0-9 of the 12 a pixel has here (one stage per clock, as before)
+        ring_d <= ring_q;
         case (p_cnt)
             5'd0: rd_addr_t <= line_base(t_slotA) + t_px_l;
             5'd1: rd_addr_t <= line_base(t_slotB) + t_px_l;
-            5'd3: begin
-                t_sqa_r <= ring_q[23:16] * ring_q[23:16];
-                t_sqa_g <= ring_q[15:8]  * ring_q[15:8];
-                t_sqa_b <= ring_q[7:0]   * ring_q[7:0];
-            end
             5'd4: begin
-                t_sqb_r <= ring_q[23:16] * ring_q[23:16];
-                t_sqb_g <= ring_q[15:8]  * ring_q[15:8];
-                t_sqb_b <= ring_q[7:0]   * ring_q[7:0];
+                t_sqa_r <= ring_d[23:16] * ring_d[23:16];
+                t_sqa_g <= ring_d[15:8]  * ring_d[15:8];
+                t_sqa_b <= ring_d[7:0]   * ring_d[7:0];
             end
             5'd5: begin
+                t_sqb_r <= ring_d[23:16] * ring_d[23:16];
+                t_sqb_g <= ring_d[15:8]  * ring_d[15:8];
+                t_sqb_b <= ring_d[7:0]   * ring_d[7:0];
+            end
+            5'd6: begin
                 t_bl_r <= t_mix_r[23:8];
                 t_bl_g <= t_mix_g[23:8];
                 t_bl_b <= t_mix_b[23:8];
             end
-            5'd6: begin
+            5'd7: begin
                 t_h1_r <= isqrt_h(t_bl_r);
                 t_h1_g <= isqrt_h(t_bl_g);
                 t_h1_b <= isqrt_h(t_bl_b);
             end
-            5'd7: begin
-                t_out   <= {isqrt_l(t_h1_r), isqrt_l(t_h1_g), isqrt_l(t_h1_b)};
+            5'd8: begin
+                t_h2_r <= isqrt_m(t_h1_r);
+                t_h2_g <= isqrt_m(t_h1_g);
+                t_h2_b <= isqrt_m(t_h1_b);
+            end
+            5'd9: begin
+                t_out   <= {isqrt_l(t_h2_r), isqrt_l(t_h2_g), isqrt_l(t_h2_b)};
                 t_out_v <= t_fetch;
             end
             default: ;
