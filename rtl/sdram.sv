@@ -20,7 +20,9 @@
 //  reads cannot hold the CPU up the way the low-priority download channel
 //  would. A write is acknowledged once the WRITE command has gone out; the
 //  next access to the same bank opens its row afterwards, so a read that
-//  follows it on any channel sees the new data.
+//  follows it on any channel sees the new data. After a write the next
+//  command waits out the write recovery and the auto precharge (the
+//  original waited 2 clocks less, under tRC at 96 MHz).
 //
 //  Channel priority is fixed: ch0 > ch1 > ch2 > ch3 > write.
 //
@@ -148,6 +150,32 @@ wire  [15:0] dq_in = SDRAM_DQ;
 reg   [15:0] saved_data;
 reg    [2:0] cur;            // 0-3 read channel, 4 write
 
+// The IDLE state's checks, from registers: rd_busy[n] is "a read for channel
+// n is still coming in" (rd_delay != 0 && rd_ch == n) and rfsh_due "a
+// refresh is due" (refresh_count > REFRESH_CYCLES), each worked out a clock
+// ahead from the values these registers take next, so the choice of the next
+// access starts from flip-flops instead of the read pipeline and the count.
+wire           rd_issue = (state == STATE_RW1) && !saved_wr;
+wire   [DLY:0] rd_dly_nx = init ? {(DLY + 1){1'b0}} : ((rd_delay >> 1) | (rd_issue ? {1'b1, {DLY{1'b0}}} : {(DLY + 1){1'b0}}));
+wire     [1:0] rd_ch_nx  = rd_issue ? cur[1:0] : rd_ch;
+reg      [3:0] rd_busy = 4'd0;
+reg            rfsh_due = 1'b0;
+reg     [13:0] rc_nx;
+always @(*) begin
+	rc_nx = refresh_count + 1'b1;
+	if (state == STATE_STARTUP && refresh_count == 14'd0) rc_nx = 14'd0;
+	if (state == STATE_IDLE && rfsh_due)                  rc_nx = refresh_count - REFRESH_CYCLES + 1'd1;
+	if (init)                                             rc_nx = STARTUP_MAX - STARTUP_CYCLES;
+end
+
+always @(posedge clk) begin
+	rd_busy[0] <= (rd_dly_nx != 0) && (rd_ch_nx == 2'd0);
+	rd_busy[1] <= (rd_dly_nx != 0) && (rd_ch_nx == 2'd1);
+	rd_busy[2] <= (rd_dly_nx != 0) && (rd_ch_nx == 2'd2);
+	rd_busy[3] <= (rd_dly_nx != 0) && (rd_ch_nx == 2'd3);
+	rfsh_due   <= rc_nx > REFRESH_CYCLES;
+end
+
 always @(posedge clk) begin
 	refresh_count <= refresh_count + 1'b1;
 	rd_delay      <= rd_delay >> 1;
@@ -201,19 +229,19 @@ always @(posedge clk) begin
 		STATE_IDLE: begin
 			// word address split: bank = [24:23], row = [22:10], column = [9:1]
 			// (32 MB module); cas_addr carries DQM in [12:11], auto-precharge in [10]
-			if (refresh_count > REFRESH_CYCLES) begin
+			if (rfsh_due) begin
 				state         <= STATE_RFSH;
 				command       <= CMD_AUTO_REFRESH;
 				refresh_count <= refresh_count - REFRESH_CYCLES + 1'd1;
 			end
-			else if (ch0_req != ch0_ack && !(rd_delay != 0 && rd_ch == 2'd0)) begin
+			else if (ch0_req != ch0_ack && !rd_busy[0]) begin
 				{cas_addr[12:9], SDRAM_BA, SDRAM_A, cas_addr[8:0]} <= {2'b00, 1'b1, 1'b0, ch0_addr, 2'b00};
 				saved_wr <= 1'b0;
 				cur      <= 3'd0;
 				command  <= CMD_ACTIVE;
 				state    <= STATE_WAIT;
 			end
-			else if (ch1_req != ch1_ack && !(rd_delay != 0 && rd_ch == 2'd1)) begin
+			else if (ch1_req != ch1_ack && !rd_busy[1]) begin
 				if (ch1_we) begin
 					{cas_addr[12:9], SDRAM_BA, SDRAM_A, cas_addr[8:0]} <= {~ch1_be, 1'b1, 1'b0, ch1_addr};
 					saved_data <= ch1_din;
@@ -227,14 +255,14 @@ always @(posedge clk) begin
 				command  <= CMD_ACTIVE;
 				state    <= STATE_WAIT;
 			end
-			else if (ch2_req != ch2_ack && !(rd_delay != 0 && rd_ch == 2'd2)) begin
+			else if (ch2_req != ch2_ack && !rd_busy[2]) begin
 				{cas_addr[12:9], SDRAM_BA, SDRAM_A, cas_addr[8:0]} <= {2'b00, 1'b1, 1'b0, ch2_addr, 2'b00};
 				saved_wr <= 1'b0;
 				cur      <= 3'd2;
 				command  <= CMD_ACTIVE;
 				state    <= STATE_WAIT;
 			end
-			else if (ch3_req != ch3_ack && !(rd_delay != 0 && rd_ch == 2'd3)) begin
+			else if (ch3_req != ch3_ack && !rd_busy[3]) begin
 				{cas_addr[12:9], SDRAM_BA, SDRAM_A, cas_addr[8:0]} <= {2'b00, 1'b1, 1'b0, ch3_addr, 2'b00};
 				saved_wr <= 1'b0;
 				cur      <= 3'd3;
@@ -261,7 +289,11 @@ always @(posedge clk) begin
 				dq_oe    <= 1'b1;
 				if (cur == 3'd1) ch1_ack <= ch1_req;
 				else             wr_ack  <= wr_req;
-				state    <= STATE_IDLE_2;
+				// write recovery and the auto precharge before the next
+				// ACTIVE or refresh: 7 clocks ACTIVE to ACTIVE (73 ns >= tRC
+				// 60/63 ns), 5 from the WRITE (52 ns >= tDAL = tWR + tRP,
+				// 30/35 ns) for -6/-7 parts
+				state    <= STATE_IDLE_4;
 			end
 			else begin
 				command <= CMD_READ;
