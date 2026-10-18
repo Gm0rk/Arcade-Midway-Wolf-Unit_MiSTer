@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # ============================================================================
-#  cut_content.py - program ROM patches for content a game left unreachable
+#  cut_content.py - program ROM patches: content a game left unreachable, and
+#  a sound priority the game got wrong
 #
 #  The MRA of a set with patches loads a second copy of the program ROM after
 #  the graphics, with these patches applied to it (MRA <patch> elements); the
@@ -27,6 +28,26 @@
 #           GETPC A7 / ADDI 60h,A7 / MOVE A7,-*A12,1 / JA story
 #           CALLA clear / NOP
 #         (11 words, the size of what they replace)
+#
+#  Ultimate Mortal Kombat 3 (1.0, 1.1, 1.2): SCORPION'S "GET OVER HERE!"
+#
+#    The game plays its sounds through five channels of its own (the table
+#    at 10B9080h, 40h bytes a channel: priority, and 10h further the frames
+#    left). A call is {priority << 8 | frames, DCS command}; it takes the
+#    channel with the lowest priority, if its own is higher, and the DCS
+#    command sent is the call's plus the channel number. Scorpion's spear
+#    (two calls, "Get over here!" and "Come here!", both 5Fh / 6Fh frames
+#    long) has priority 41h, the lowest in the game, and the blood of the hit
+#    sends a dozen sounds of priority 50h in the next 18 frames: the second of
+#    them takes the voice's channel, and the DCS, told the channel has a new
+#    sound, stops the voice after 12 frames, "Get ov...". The program is the
+#    same in the three revisions and the board does exactly this (MAME's
+#    sound board plays what the game sends; with Blood off, the DIP switch,
+#    there is no burst).
+#    The patch gives the two calls priority 71h, above the blood and the
+#    other sounds of the move, so the voice keeps its channel and plays out.
+#    Nothing else changes: the same commands go to the sound board, the
+#    blood sounds take the other channels.
 #
 #  Usage (check a program image, 1 MB, 16-bit little endian):
 #    cut_content.py umk3 PROGRAM.BIN
@@ -142,6 +163,29 @@ def umk3_endings(rom):
     return {o: w for o, w in p.items() if W(o) != w}
 
 
+def umk3_scorpion_voice(rom):
+    """Word patches {offset: value} for Scorpion's two spear voices (see the
+    header). Raises NoMatch when the ROM does not look as expected."""
+    W = lambda o: struct.unpack_from("<H", rom, o)[0]
+    # the calls {priority 41h << 8 | frames, DCS command}: "Get over here!"
+    # (5Fh frames, command 528Fh) and "Come here!" (6Fh, 5294h) one after the
+    # other, the first pointed at by the game's move tables
+    a = _one(_find_all(rom, struct.pack("<HH", 0x415F, 0x528F)), "voice call 415F")
+    b = _one(_find_all(rom, struct.pack("<HH", 0x416F, 0x5294)), "voice call 416F")
+    if b != a + 4:
+        raise NoMatch("voice calls not together")
+    if not _find_all(rom, struct.pack("<I", _bit(a))):
+        raise NoMatch("voice calls: no table points at them")
+    return {a: 0x715F, b: 0x716F}
+
+
+def umk3_patches(rom):
+    """All of UMK3's patches (EJB Character Endings, Scorpion's voice)."""
+    p = umk3_endings(rom)
+    p.update(umk3_scorpion_voice(rom))
+    return p
+
+
 def runs(words):
     """{offset: word} as a list of (offset, bytes), contiguous words merged."""
     out = []
@@ -155,7 +199,7 @@ def runs(words):
 
 
 # game family -> patch builder
-BUILDERS = {"umk3": umk3_endings}
+BUILDERS = {"umk3": umk3_patches}
 
 
 def patches(family, prog):
