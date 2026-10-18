@@ -4,7 +4,7 @@
 |---|---|
 | `mra_gen.py` | Writes `mra/` from MAME's `midwunit.cpp` (without DIP switches: the core has every game's in its OSD); `--check ROMDIR` assembles every MRA from the zips the way Main_MiSTer does (md5 included) and compares it with MAME's regions; `--regions DIR` also compares with region dumps taken from MAME |
 | `wunit_roms.py` | ROM image and configuration of a set, for the board simulation |
-| `cut_content.py` | Program ROM patches for content a game left unreachable (UMK3: Character Endings in the EJB menu), found in the ROM by pattern; `mra_gen.py` puts them in the MRA as a patched copy of the program. `cut_content.py umk3 PROGRAM.BIN` lists them |
+| `cut_content.py` | Program ROM patches, found in the ROM by pattern (UMK3: Character Endings in the EJB menu, the sound priority that cuts Scorpion's spear voice off); `mra_gen.py` puts them in the MRA as a patched copy of the program. `cut_content.py umk3 PROGRAM.BIN` lists them |
 | `kombat_kodes.py` | MK3 / UMK3 Kombat Kodes: finds the game's state variable the core's kode player watches (`mra_gen.py` puts it in the MRA's config bytes 12-13) and checks the core's kodes (OSD pages, status bits and the player's table) against the game's own kode tables. `kombat_kodes.py PROGRAM.BIN mk3\|umk3` lists an image's kodes, `--core` the core's |
 | `finishing_moves.py` | MK3 / UMK3 finishing moves: reads them out of a program ROM's move tables (`finishing_moves.py PROGRAM.BIN mk3\|umk3` lists them and the core table they match; `mra_gen.py` puts that in the MRA's config byte 14), writes the core's programs (`--write UMK3.BIN MK3R10.BIN`: `rtl/wunit_finish_moves.vh` and the OSD lines: the Move List option and each move's name and input), checks the OSD page (every character's move lines with each table; lines several characters share) and the Move List option (`--check`), lists the core's moves (`--list`), and plays them in MAME (`--mame WTUNIT ROMDIR SET OUTDIR [--rtl sim/finish/obj_dir/Vwunit_finish] [--winner 2] [--chars N,..] [--slots N,..] [--dists D,..\|label]`: every move at every distance, or at each end of its window and the middle (`label`); with `--rtl`, what the core's player holds frame by frame) |
 | `move_list.py` | The pages of the Move List window (MK3 / UMK3: the special moves of `move_list.txt`, from MAME's command.dat, and the finishing moves of `finishing_moves.py`, one page per fighter and game, in the OSD's order) and of the Secret Codes window (the Hangtimes: `hangtime_secrets.txt`, two pages per version; Open Ice: `openice_secrets.txt`, four pages); `--write` writes the window's ROM images (`rtl/wunit_movelist_*.hex`), `--check` compares them with the sources, `--show PAGE\|NAME\|all` prints pages as text |
@@ -14,6 +14,7 @@
 | `hangtime_secrets.txt` | The secret players each version accepts and the match-up codes with their effects (`hangtime_secrets.py --write`) |
 | `openice_secrets.py` | 2 On 2 Open Ice Challenge: who each secret player is (FULL_NAMES, with its sources); reads the secret players (initials, birthday) and the codes (joystick and button sequences, the Tonight's Game and the face-off lists) out of a program ROM (`openice_secrets.py PROGRAM.BIN`), writes `openice_secrets.txt` (`--write PROGRAM.BIN`), checks it against an image (`--check PROGRAM.BIN`) |
 | `openice_secrets.txt` | Open Ice's secret players and codes with their names (`openice_secrets.py --write`) |
+| `extra_content.py` | Copies each game's section of `docs/Extra-Content.md` into that game's page in `docs/` (`--write`); `--check` fails when a page differs, the README does not link the page, or an OSD item the page names is not in the core's CONF_STR. Run after any change to the core's extras |
 | `frame_compare.py` | Compares simulator frames with MAME's (`--scan`), writes side-by-side PNGs |
 | `dcs_trace.py` | The DCS sound DSP against MAME (`sim/dcs`): collapses MAME's trace and writes the host events for the simulator, compares the simulator's trace with it instruction by instruction, compares DAC word streams |
 | `timing_paths.tcl` | `quartus_sta -t tools/timing_paths.tcl`: the 1000 worst setup paths of the last compile, without recompiling |
@@ -21,7 +22,8 @@
 | `lua/ref_trace.lua` | MAME: frames at chosen points, CRT controller / sound latch / blitter / control writes, timed button presses |
 | `lua/bus_log.lua` | MAME: palette, blitter register, sound latch and UMK3 palette-ring writes with the time into the frame and the PC, in the format of the simulator's `-buslog` |
 | `lua/finishing_moves.lua` | MAME: a two-player MK3 / UMK3 game to FINISH HIM, then each finishing move at each distance, with the game's result (for `finishing_moves.py --mame`) |
-| `lua/dcs_trace.lua` | MAME: the DCS DSP's trace from power-on with its registers, the host's latch and reset writes, the DAC words |
+| `lua/dcs_trace.lua` | MAME: the DCS DSP's trace from power-on with its registers, the host's latch and reset writes, the DAC words; `DCS_INJECT` / `DCS_INJECT_LIST` send chosen sound commands in attract mode |
+| `lua/fight_sound.lua` | MAME: a UMK3 fight (chosen fighters, one move at a chosen distance) with the sound commands the game sends and the DAC words; `FS_TAP` / `FS_WTAP` log the 34010's reads / writes of a table, `FS_PATCH` patches the program ROM first |
 
 ## MAME reference build
 
