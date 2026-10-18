@@ -64,6 +64,8 @@ module wunit_vram
 	input       [6:0] blt_lo,
 	input       [6:0] blt_hi,
 	output      [6:0] blt_raddr,     // read address into the blitter's row buffer
+	output      [6:0] blt_rbase,     // the same before this clock's accepted beat
+	output            blt_radv,      // a beat is accepted this clock (blt_raddr = blt_rbase + 1)
 	input      [63:0] blt_q,         // its data, one cycle later
 	input       [7:0] blt_be,
 
@@ -126,6 +128,11 @@ reg  [28:0] next_addr;
 reg   [6:0] blt_rd;
 
 assign blt_raddr = blt_rd;
+// the address in two parts, for the blitter's valid-bit lookup: both
+// candidates are read from registers, and the DDR3 port's waitrequest
+// (through wr_accept) only picks one at the end
+assign blt_rbase = blt_lo + src_idx[6:0];
+assign blt_radv  = wr_accept;
 
 wire        wr_accept = ddr_we & ~ddr_busy;
 
@@ -143,22 +150,37 @@ reg   [7:0] cpu_bemask;
 assign ddr_din = (op == D_CPU) ? cpu_din    : src_q;
 assign ddr_be  = (op == D_CPU) ? cpu_bemask : src_be;
 
+// A DDR3 transaction is never cut short: once a read command is out (or
+// waiting to be taken) or a write burst has started, it runs to its end
+// even through a reset, and only then does the reset take the sequencer
+// back to idle. The f2sdram port is left waiting for the rest of a burst
+// otherwise (sys/f2sdram_safe_terminator only covers the framework's own
+// reset, not the core's: the USER button, OSD Reset, an option change).
+// The acknowledges are left alone: in reset each client sets its request
+// to its acknowledge (resetting both ends at once can leave them swapping).
+// An operation a reset came into is finished on the bus only: no second
+// burst, no acknowledge (a short reset can end before its burst does, and
+// a client's next request must not be taken as done).
+wire in_txn = (vstate == V_RDDATA) || (vstate == V_WR) || (vstate == V_RD && ddr_rd);
+reg  aborted;                    // a reset came during this operation
+wire abort = aborted | reset;
+
 always @(posedge clk) begin
 	lb_we <= 1'b0;
 	sb_we <= 1'b0;
 
-	if (reset) begin
+	if (reset && !in_txn) begin
 		vstate    <= V_IDLE;
 		ddr_rd    <= 1'b0;
 		ddr_we    <= 1'b0;
-		disp_ack  <= disp_req;
-		srt_ack   <= srt_req;
-		blt_ack   <= blt_req;
-		cpu_ack   <= cpu_req;
+		aborted   <= 1'b0;
 	end
 	else begin
+		if (reset)
+			aborted <= 1'b1;
 		case (vstate)
 			V_IDLE: begin
+				aborted <= 1'b0;
 				second  <= 1'b0;
 				src_idx <= 8'd0;
 				bi      <= 8'd0;
@@ -215,12 +237,12 @@ always @(posedge clk) begin
 			V_RDDATA: if (ddr_dout_ready) begin
 				case (dst)
 					D_LINE: begin
-						lb_we   <= 1'b1;
+						lb_we   <= ~abort;           // an aborted read only drains
 						lb_addr <= bi[6:0];
 						lb_data <= ddr_dout;
 					end
 					D_SRT: begin
-						sb_we    <= 1'b1;
+						sb_we    <= ~abort;
 						sb_waddr <= {second, bi[6:0]};
 						sb_wdata <= ddr_dout;
 						if (!second && bi == 8'd0) sr0 <= ddr_dout[15:0];
@@ -230,7 +252,7 @@ always @(posedge clk) begin
 				bi <= bi + 8'd1;
 				if (bi + 8'd1 == beats) begin
 					bi <= 8'd0;
-					if (dst == D_SRT && !second) begin
+					if (dst == D_SRT && !second && !abort) begin
 						second   <= 1'b1;
 						ddr_addr <= next_addr;
 						vstate   <= V_RD;
@@ -251,7 +273,7 @@ always @(posedge clk) begin
 					if (bi + 8'd1 == beats) begin
 						ddr_we <= 1'b0;
 						bi     <= 8'd0;
-						if (op == D_SRT && !second) begin
+						if (op == D_SRT && !second && !abort) begin
 							second   <= 1'b1;
 							ddr_addr <= next_addr;
 							src_idx  <= 8'd128;
@@ -268,12 +290,13 @@ always @(posedge clk) begin
 			end
 
 			V_DONE: begin
-				case (op)
-					D_LINE:  disp_ack  <= disp_req;
-					D_SRT:   srt_ack   <= srt_req;
-					D_BLT:   blt_ack   <= blt_req;
-					default: cpu_ack   <= cpu_req;
-				endcase
+				if (!aborted)
+					case (op)
+						D_LINE:  disp_ack  <= disp_req;
+						D_SRT:   srt_ack   <= srt_req;
+						D_BLT:   blt_ack   <= blt_req;
+						default: cpu_ack   <= cpu_req;
+					endcase
 				vstate <= V_IDLE;
 			end
 
