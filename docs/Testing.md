@@ -27,8 +27,8 @@ game; its alternative sets only need to boot and play.
 
 | Section | Passed | Tests | Status |
 |---|---|---|---|
-| Core-wide | 0 | 12 | Not started |
-| Mortal Kombat 3 | 0 | 24 | Not started |
+| Core-wide | 0 | 14 | Not started |
+| Mortal Kombat 3 | 0 | 25 | Not started |
 | Ultimate Mortal Kombat 3 | 0 | 25 | Not started |
 | WWF WrestleMania | 0 | 14 | Not started |
 | 2 On 2 Open Ice Challenge | 0 | 16 | Not started |
@@ -66,6 +66,8 @@ Status: Not started, In progress, Verified (every test passes).
 | C10 | "Pause when OSD is Open" On / Off | On: the game waits while the OSD is open. Off: it keeps running | |
 | C11 | OSD Reset, then Reset and close OSD | The game restarts both times; the second closes the OSD | |
 | C12 | Save Settings, then reload the core | Changed operator settings and high scores are still there, no CMOS error | |
+| C13 | USER button (or the keyboard's reset) in the middle of a fight, several times | The game restarts each time with a clean picture; it never freezes | |
+| C14 | An hour of attract mode and play | No crash, reset, hang or broken graphics | |
 
 ## Mortal Kombat 3
 
@@ -97,6 +99,7 @@ Main set: mk3 (rev 2.1).
 | MK3-22 | Set rev 1 chip label p4.0 | Boots and plays a fight | |
 | MK3-23 | OSD main page | Video Settings, Kombat Kodes, Move List, Finishing Moves, DIP Switches, Secret Menu, Service Mode, Pause when OSD is Open, Reset, Reset and close OSD; DIP Switches: Attract Sound, Bill Validator, Blood, Coinage, Coinage Source, Counters, Service Credit, Test Switch, Tilt, Violence, in that order | |
 | MK3-24 | DIP Switches page: Coinage Source Dipswitch, Coinage USA-Free Play | Free play: Start without coins; back to CMOS, coins needed again | |
+| MK3-25 | Rev 1.0: Mercy with Character left at Cyrax, another fighter winning round 3's first fight | The Mercy happens. Cyrax's own page has no Mercy line; a Mercy picked when Cyrax wins brings "The winner has no such move" | |
 
 ## Ultimate Mortal Kombat 3
 
