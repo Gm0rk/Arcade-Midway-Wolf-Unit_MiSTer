@@ -84,6 +84,10 @@ static void tick()
 	else if (vr_state == 1) {
 		if (vr_i < vr_n) {
 			top->blt_raddr = (vr_lo + vr_i) & 0x7F;
+			// the same address as the VRAM controller also gives it: a base
+			// and this clock's step (either split, at random)
+			top->blt_radv  = rand() & 1;
+			top->blt_rbase = (top->blt_raddr - top->blt_radv) & 0x7F;
 			take = true;
 			take_beat = (vr_lo + vr_i) & 0x7F;
 			vr_i++;
