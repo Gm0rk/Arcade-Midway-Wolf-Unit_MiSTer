@@ -250,7 +250,9 @@ always @(posedge clk) begin
 
 	dcs_reset_d <= dcs_reset;
 
-	// host side of the latches
+	// host side of the latches. A host write in the clock the DSP reads the
+	// input latch: the DSP takes the old byte, the new one stays pending
+	// (the DSP's read below leaves in_full set)
 	if (host_wr) begin
 		in_data <= {8'h00, host_data};
 		in_full <= 1'b1;
@@ -306,7 +308,7 @@ always @(posedge clk) begin
 						end
 						else begin
 							ext_rdata <= {in_data, 8'h00};
-							in_full   <= 1'b0;
+							if (!host_wr) in_full <= 1'b0;   // a byte written now stays pending
 						end
 						ext_ack <= 1'b1;
 					end
@@ -351,8 +353,8 @@ always @(posedge clk) begin
 								out_data <= ext_wdata[15:0];
 								out_full <= 1'b1;
 							end
-							else
-								in_full <= 1'b0;
+							else if (!host_wr)
+								in_full <= 1'b0;             // a byte written now stays pending
 						end
 						ext_rdata <= (!ext_we && ext_addr[13:2] == 12'hD00) ? {8'h00, in_data} : 24'd0;
 						ext_ack   <= 1'b1;
