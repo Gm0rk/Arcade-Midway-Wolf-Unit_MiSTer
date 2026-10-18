@@ -2,6 +2,19 @@
 
 MRA sets: rmpgwt (rev 1.3), with rev 1.1 in `_alternatives`.
 
+<!-- extra-content: this section is copied from Extra-Content.md by tools/extra_content.py -->
+
+## Extra content
+
+No game-specific extras: it gets the core-wide ones, in both sets (rev 1.3
+and 1.1). The game's secret and hidden levels are part of normal play, not
+a menu, so there is nothing to open from the OSD.
+
+The core-wide extras every game gets, and the other games' extras:
+[Extra content](Extra-Content.md).
+
+<!-- /extra-content -->
+
 ## OSD
 
 The main page, in order: Video Settings; DIP Switches (Bill Validator,

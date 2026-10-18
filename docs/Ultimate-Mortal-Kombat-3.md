@@ -2,19 +2,42 @@
 
 MRA sets: umk3 (rev 1.2), with rev 1.1 and rev 1.0 in `_alternatives`.
 Use the MRAs of the same release as the core: they tell it where the game
-keeps its state and carry the patched program copy for EJB Character
-Endings.
+keeps its state and carry the patched program copy for the Scorpion - Smoke
+Voice Fix option.
 
 ## Contents
 
+- [Extra content](#extra-content)
 - [OSD](#osd)
 - [Controls](#controls)
 - [EJB Menu](#ejb-menu)
-- [EJB Character Endings](#ejb-character-endings)
+- [Scorpion - Smoke Voice Fix](#scorpion---smoke-voice-fix)
 - [Kombat Kodes](#kombat-kodes)
 - [Ultimate Kombat Kodes](#ultimate-kombat-kodes)
 - [Move List](#move-list)
 - [Finishing Moves](#finishing-moves)
+
+<!-- extra-content: this section is copied from Extra-Content.md by tools/extra_content.py -->
+
+## Extra content
+
+The most extras of any game, in every revision (1.2, 1.1, 1.0): the EJB
+Menu, a voice fix, 50 Kombat Kodes (47 plus the 3 Ultimate Kombat Kodes), a
+Move List for 23 fighters and the Finishing Moves.
+
+| Extra | What it does | Where in the OSD |
+|---|---|---|
+| Open EJB Menu (Attract Mode) | Enters the developers' test menu code for you in attract mode (the OSD notes it as the Hidden Alternate Test Menu): extra audits, the full credits, the "Penacho/Miller" Galaga-style game, the hidden characters on and off and a fatality demonstration | Secret Menu |
+| Scorpion - Smoke Voice Fix | Off by default; changing it restarts the game. Scorpion's "Get over here!" and "Come here!" no longer cut off after "Get ov..." when the spear's blood sounds come (the game's own sound priority does it, the same in MAME). The same patched program copy gives the EJB menu back the Character Endings item UMK3 left out, and each ending shows its story before the cast roll | Secret Menu |
+| Kombat Kodes | 47 kodes entered on the VS screen: 18 Fight, 4 Round 1 Winner Battles, 16 Kombat Zone (the fight's stage) and 9 Messages. Pick one in a two-player game and the core presses the buttons at the next VS screen | Kombat Kodes |
+| Ultimate Kombat Kodes | Mileena (22264-22264), Ermac (12344-44321) and Classic Sub-Zero (81835-81835), entered on the game-over screen; the game unlocks the fighter and keeps it in its CMOS | Kombat Kodes page |
+| Move List | All 23 fighters, the hidden ones too: special moves with Shang Tsung's morphs, and finishing moves with input and distance, over the UMK3 logo; the game waits while it is up | Move List |
+| Finishing Moves | Pick the fighter; at FINISH HIM the core enters the move on the winner's controls, turned to the side the winner faces: Fatalities, Stage Fatality (Subway, The Pit 3, Bell Tower, Scorpion's Lair), Animality, Friendship, Babality and the Mercy (entered for whoever won) | Finishing Moves |
+
+The core-wide extras every game gets, and the other games' extras:
+[Extra content](Extra-Content.md).
+
+<!-- /extra-content -->
 
 ## OSD
 
@@ -26,7 +49,7 @@ The main page, in order:
 - Finishing Moves (below)
 - DIP Switches: Attract Sound, Bill Validator, Blood, Coinage, Coinage
   Source, Counters, Service Credit, Test Switch, Tilt, Violence
-- Secret Menu: Open EJB Menu (Attract Mode), EJB Character Endings
+- Secret Menu: Open EJB Menu (Attract Mode), Scorpion - Smoke Voice Fix
 - Service Mode, Pause when OSD is Open
 - Reset, Reset and close OSD
 
@@ -48,14 +71,28 @@ Block x3, P2 Block x3). It adds extra audits, the full credits, the
 "Penacho/Miller" Galaga-style game, the hidden characters (Mileena, Ermac,
 Classic Sub-Zero) on/off and a fatality demonstration.
 
-## EJB Character Endings
+## Scorpion - Smoke Voice Fix
 
-OSD Secret Menu option. UMK3 dropped Mortal Kombat 3's Character Endings
-item from its EJB menu, but the item and its submenu (Kano to Smoke) are
-still in the ROM, and the endings' stories are the game's own. With the
-option on, the EJB menu has the item back and each ending shows its story
-before the cast roll. The core runs a patched copy of the program ROM that
-the MRA loads next to the original; changing the option restarts the game.
+OSD Secret Menu option "Scorpion - Smoke Voice Fix" (Off by default). In all
+three revisions Scorpion's spear cuts his voice off when it hits ("Get ov..."
+/ "Come..."). That is the game, not the sound board: the game plays its sounds
+through five channels of its own, a sound taking the channel with the lowest
+priority, and gives the two spear voices, "Get over here!" and "Come here!",
+the lowest priority of all. The blood of the hit sends a dozen sounds in the
+next 18 frames; the second takes the voice's channel and the sound board
+stops the voice after 12 frames. (Blood off in the DIP switches avoids it, as
+it avoids the blood.) MAME does the same, and its developers report that the
+original board does too. With the option on, the two voices have a higher
+priority than the blood, so they play out and the blood sounds take the
+other channels; nothing else changes.
+
+The option runs a patched copy of the program ROM that the MRA loads next to
+the original; changing it restarts the game. With the option Off the game
+runs the arcade board's program exactly. The same copy also gives the EJB
+menu its **Character Endings** item back: UMK3 dropped Mortal Kombat 3's
+Character Endings item from that menu, but the item and its submenu (Kano to
+Smoke) are still in the ROM, and the endings' stories are the game's own. With
+the option on, each ending shows its story before the cast roll.
 
 ## Kombat Kodes
 

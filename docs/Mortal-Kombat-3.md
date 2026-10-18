@@ -6,6 +6,7 @@ it where the game keeps its state and which finishing moves the set has.
 
 ## Contents
 
+- [Extra content](#extra-content)
 - [OSD](#osd)
 - [Controls](#controls)
 - [EJB Menu](#ejb-menu)
@@ -13,6 +14,27 @@ it where the game keeps its state and which finishing moves the set has.
 - [Ultimate Kombat Kode](#ultimate-kombat-kode)
 - [Move List](#move-list)
 - [Finishing Moves](#finishing-moves)
+
+<!-- extra-content: this section is copied from Extra-Content.md by tools/extra_content.py -->
+
+## Extra content
+
+In every revision (2.1, 2.0, 1.0, p4.0): the EJB Menu, 20 Kombat Kodes (19
+plus the Ultimate Kombat Kode), a Move List for 15 fighters and the
+Finishing Moves.
+
+| Extra | What it does | Where in the OSD |
+|---|---|---|
+| Open EJB Menu (Attract Mode) | Enters the developers' test menu code for you in attract mode: extra audits, the full credits (an unfinished "Hello" screen on 1.0 and p4.0), Character Endings, the "Penacho/Miller" Galaga-style game and SMOKE / UN-SMOKE | Secret Menu |
+| Kombat Kodes | 19 kodes entered on the VS screen: 12 Fight, 4 Round 1 Winner Battles (Motaro, Shao Kahn, Noob Saibot, Smoke) and 3 Messages. Pick one in a two-player game and the core presses the buttons at the next VS screen | Kombat Kodes |
+| Ultimate Kombat Kode | Smoke (10902-22234), entered on the game-over screen; Smoke becomes playable and the game keeps it in its CMOS | Kombat Kodes page |
+| Move List | Each fighter's special moves with Shang Tsung's morphs, and their finishing moves with input and distance, over the MK3 logo; the game waits while it is up. Shows the revision's own moves (2.x or 1.x) | Move List |
+| Finishing Moves | Pick the fighter; at FINISH HIM the core enters the move on the winner's controls, turned to the side the winner faces: Fatalities, Stage Fatality, Animality, Friendship, Babality and the Mercy (entered for whoever won; Cyrax has none on MK3 1.x) | Finishing Moves |
+
+The core-wide extras every game gets, and the other games' extras:
+[Extra content](Extra-Content.md).
+
+<!-- /extra-content -->
 
 ## OSD
 

@@ -4,10 +4,31 @@ MRA sets: openice (rev 1.21), with rev 1.2A in `_alternatives`.
 
 ## Contents
 
+- [Extra content](#extra-content)
 - [OSD](#osd)
 - [Controls](#controls)
 - [Secret Codes](#secret-codes)
 - [Notes](#notes)
+
+<!-- extra-content: this section is copied from Extra-Content.md by tools/extra_content.py -->
+
+## Extra content
+
+One extra, Secret Codes, which lists the game's 161 secret players and 25
+codes over the game's logo while the game waits. The lists come from the
+program ROM (the same in rev 1.21 and 1.2A); you still enter the players
+and codes yourself. The game has no hidden menu.
+
+| Page (OSD Secret Codes) | What it lists |
+|---|---|
+| Secret Players 1-3 | 161 secret players: initials and birthday to enter, and who each one is |
+| Tonight's Game | 13 joystick-and-button codes: big, huge, tiny and normal heads for players and goalies, Big Puck, Baby Size Players, Fat Heads, Dark Rink, Top Display Off |
+| Face-off | 12 codes for the time before the first face-off: Throwing Off, Super Goalies, Tournament Mode, Computer Assistance Off, Unlimited Turbo, Turbo Checks Off, Speed Up, the four Better codes and Fast Turbo Recovery |
+
+The core-wide extras every game gets, and the other games' extras:
+[Extra content](Extra-Content.md).
+
+<!-- /extra-content -->
 
 ## OSD
 

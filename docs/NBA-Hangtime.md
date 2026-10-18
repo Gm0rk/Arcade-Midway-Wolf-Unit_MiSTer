@@ -8,10 +8,34 @@ the Secret Codes list.
 
 ## Contents
 
+- [Extra content](#extra-content)
 - [OSD](#osd)
 - [Controls](#controls)
 - [Secret Midway Menu](#secret-midway-menu)
 - [Secret Codes](#secret-codes)
+
+<!-- extra-content: this section is copied from Extra-Content.md by tools/extra_content.py -->
+
+## Extra content
+
+Two extras, the same in all ten sets of both games: the Secret Midway Menu
+and the Secret Codes lists. The lists follow the version of the set (the
+MRA tells the core which it is), so some names exist only in Maximum
+Hangtime.
+
+| Extra | What it does | Where in the OSD |
+|---|---|---|
+| Secret Midway Menu | An Off / On option that goes back to Off at once; the core enters the hidden code for you once the OSD is closed. Shows the staff statistics pages: dunks, play time, game averages, team picks and the stored initials with their PINs. A button turns the page and the game restarts after the last | Main page |
+| Secret Codes, Page 1 | Up to 40 secret players (Midway staff and guests) with their PINs and who each one is, and 13 match-up codes: Tournament Mode, Baby Players, No Music, Goaltending Called, Max Blocking, Quick Hands, Max Power, Max Speed, Hyper Speed, Stealth Turbo, Unlimited Turbo, No Pushing, Fast Passing | Secret Codes |
+| Secret Codes, Page 2 | Up to 47 hidden NBA players and who each one is (all PIN 0000) | Secret Codes |
+
+The Secret Codes lists are drawn over the game's own logo while the game
+waits; you enter the players and codes yourself.
+
+The core-wide extras every game gets, and the other games' extras:
+[Extra content](Extra-Content.md).
+
+<!-- /extra-content -->
 
 ## OSD
 
