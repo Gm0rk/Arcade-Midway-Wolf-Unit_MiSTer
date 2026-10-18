@@ -51,8 +51,9 @@ When a picture goes wrong in the simulator but not in MAME:
 
 The OSD's hidden-menu items: `-code F` enters the game's hidden menu code
 from frame F (EJB Menu, Secret Midway Menu), `-alt` runs the patched
-program copy (EJB Character Endings; `wunit_roms.py` adds the copy to the
-image and its place to the .cfg). `-kode N@F` picks Kombat Kode N at frame F
+program copy (UMK3's Scorpion - Smoke Voice Fix option: the voice fix and the
+EJB Character Endings; `wunit_roms.py` adds the copy to the image and its
+place to the .cfg). `-kode N@F` picks Kombat Kode N at frame F
 (the OSD's "Kombat Kodes" line on status bit 18 + N, as
 `tools/kombat_kodes.py --core` lists them); the player waits for its screen
 through the state variable in the .cfg (`kode_state`) and the run prints its
