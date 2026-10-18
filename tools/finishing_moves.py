@@ -651,11 +651,20 @@ def vh(programs):
     for (t, (c, s)), a in sorted(start.items(), key=lambda x: ((x[0][0] == 2) * 256 + x[0][1][0] * 8 + x[0][1][1])):
         idx = (t == 2) * 256 + c * 8 + s
         L.append(f"\t\t9'h{idx:03X}: idx_q <= 11'd{a};{' ' * (5 - len(str(a)))}// {CHARS[c]}, {SLOTS[s]}: {programs[t][(c, s)]}")
-    L += ["\t\tdefault: idx_q <= 11'd0;", "\tendcase", "end", "", "always @(posedge clk) begin", "\tcase (pc)"]
-    for i, w in enumerate(words):
-        if w:
-            L.append(f"\t\t11'd{i}:{' ' * (5 - len(str(i)))}step <= 16'h{w:04X};")
-    L += ["\t\tdefault: step <= 16'h0000;", "\tendcase", "end", ""]
+    L += ["\t\tdefault: idx_q <= 11'd0;", "\tendcase", "end", ""]
+    # the steps as a ROM in block RAM (step <= prog_rom[pc]): read straight
+    # from the program counter, not through a case statement's logic
+    depth = 1 << max(1, (len(words) - 1).bit_length())
+    L += [f"// the steps: a ROM of {depth} words (pc beyond the last step reads 0, the end)",
+          f"reg [15:0] prog_rom [0:{depth - 1}];",
+          "initial begin"]
+    for i in range(depth):
+        w = words[i] if i < len(words) else 0
+        L.append(f"\tprog_rom[{i}] = 16'h{w:04X};")
+    L += ["end", "",
+          "always @(posedge clk)",
+          f"\tstep <= prog_rom[pc[{(depth - 1).bit_length() - 1}:0]];",
+          ""]
     return "\n".join(L)
 
 
@@ -713,12 +722,16 @@ def osd_lines(programs):
     """the OSD page's lines (CONF_STR strings). Below Character, slot by
     slot, each move line shows for the characters that have it: one line
     a character (its group and index masks), or one line for several with
-    the same move (MK3 1.x's Stage Fatality)"""
+    the same move (MK3 1.x's Stage Fatality, the Mercy). The Mercy comes
+    last, under a separator: every fighter's is the same input, MK3 1.x's
+    Cyrax has none (the player enters the winner's own)"""
     L = ['"H2P9,Finishing Moves;",', '"P9-;",',
          '"h6P9%s,Character,%s;",' % (OPT_BITS, ",".join(CHARS[c] for c in OPT_ORDER["mk3"])),
          '"H6P9%s,Character,%s;",' % (OPT_BITS, ",".join(CHARS[c] for c in OPT_ORDER["umk3"])),
          '"P9-;",']
-    for s in range(MERCY):
+    for s in range(MERCY + 1):
+        if s == MERCY:
+            L.append('"P9-;",')
         groups = {}                     # (table mask, label) -> characters, in order
         for c in range(len(CHARS)):
             a = (c, s) in programs[1] and label(programs, 1, c, s)
@@ -741,13 +754,6 @@ def osd_lines(programs):
             for m in masks:
                 pre = "".join(k + b for k, b in m)
                 L.append(f'"{pre}{tm}P9{trigger(s)},{text};",')
-    L.append('"P9-;",')
-    m1, m2 = (label(programs, t, 0, MERCY) for t in (1, 2))
-    if m1 == m2:
-        L.append(f'"P9{trigger(MERCY)},{m1};",')
-    else:
-        L.append(f'"h{OLD_TABLE}P9{trigger(MERCY)},{m1};",')
-        L.append(f'"H{OLD_TABLE}P9{trigger(MERCY)},{m2};",')
     return L
 
 
@@ -777,8 +783,7 @@ def check_pages(programs):
     err = []
     for table, n in ((1, len(CHARS)), (2, 15)):
         for c in range(n):
-            want = [(s, label(programs, table, c, s)) for s in range(MERCY) if (c, s) in programs[table]]
-            want.append((MERCY, label(programs, table, 0, MERCY)))      # one line for all
+            want = [(s, label(programs, table, c, s)) for s in range(MERCY + 1) if (c, s) in programs[table]]
             if table == 2 and c >= 15:
                 continue
             have = page_for(lines, c, table)
