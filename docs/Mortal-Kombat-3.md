@@ -135,7 +135,8 @@ How the inputs read (the window and the OSD lines alike):
 OSD page "Finishing Moves" enters finishing moves for you. Pick the
 fighter under "Character"; the lines below it list that fighter's moves
 (Fatality 1 and 2, Stage Fatality, Animality, Friendship, Babality: the
-ones it has), each by name and input, and the Mercy every fighter shares.
+ones it has), each by name and input, and the Mercy (the same input for
+every fighter).
 The game does not name its fatalities; the names here say what each one
 shows. The Move List window has where to stand for each.
 
@@ -143,7 +144,8 @@ At FINISH HIM, stand at the distance the Move List gives, open the OSD and
 pick the move: the core enters it on the winner's controls, player 1 or 2,
 turned to the side the winner faces. With "Pause when OSD is Open" on (the
 default) FINISH HIM waits while you choose. The fighter must be the
-winner's (a message says so if not), and the game's own rules still apply:
+winner's (a message says so if not; the Mercy is entered for whoever won,
+whichever fighter is picked), and the game's own rules still apply:
 
 - Stage Fatality: on the Subway, The Pit 3 or the Bell Tower
 - Friendship and Babality: only if the winner did not press Block in the
@@ -175,4 +177,6 @@ The moves come from the game's own move tables. Revisions 2.0 and 2.1
 have the same moves as Ultimate MK3; revision 1.0 and the p4.0 chip set
 have older ones: other fatalities, the same Stage Fatality for everybody,
 a Babality for Kano only, no Friendships (the game has them switched off),
-and a Mercy that also works from sweep distance.
+a Mercy that also works from sweep distance, and no Mercy (so no Animality)
+for Cyrax: his page has no Mercy line, and a Mercy picked when he wins
+brings a message instead.
