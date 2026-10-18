@@ -31,15 +31,15 @@ Turbo, Shoot / Block, Pass / Steal; up to four players.
 
 Statistics pages meant for Midway's staff, in every revision of both
 games: dunks, play time, game averages, team picks, the stored initials
-with their PINs. OSD "Open Secret Midway Menu", best in attract mode (by
+with their PINs. OSD "Secret Midway Menu" On, best in attract mode (by
 hand: both players hold Up and all three buttons, then Down; on the design
 team screen that follows, P1 Turbo x2, P2 Shoot x3, P2 Pass x2, P1 Shoot,
 P1 Pass, P2 Turbo x2, P1 Turbo x4). A button turns the page; after the
 last page the game restarts.
 
-The OSD item is an Off / On option: set it On and, once the game runs
-again (the OSD closed), the core enters the code and sets the option back
-to Off.
+The OSD item is an Off / On option: set it On and it goes back to Off at
+once; the core enters the code as soon as the game runs again (the OSD
+closed).
 
 ## Secret Codes
 
