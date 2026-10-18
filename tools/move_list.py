@@ -157,8 +157,10 @@ def finishing(programs, table, c):
             if s == 3 and fm.CHARS[c] in fm.ANIMALS:
                 name = "Animality: " + fm.ANIMALS[fm.CHARS[c]]
             out.append((name, fm.notation(programs[table][(c, s)]), fm.distance(table, c, s)))
-    m = programs[table].get((c, fm.MERCY)) or programs[table][(0, fm.MERCY)]
-    out.append(("Mercy", fm.notation(m), fm.distance(table, c, fm.MERCY)))
+    # the Mercy, where the fighter has one (MK3 1.x's Cyrax has none)
+    if (c, fm.MERCY) in programs[table]:
+        m = programs[table][(c, fm.MERCY)]
+        out.append(("Mercy", fm.notation(m), fm.distance(table, c, fm.MERCY)))
     return out
 
 
