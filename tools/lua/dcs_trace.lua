@@ -21,6 +21,14 @@
 --   DCS_END    frame to exit at (default 60)
 --   WU_PRESS   "frame:port:mask:frames,..." held input bits, as
 --              ref_trace.lua
+--   DCS_INJECT_LIST "frame:command,frame:command,...": the same, but the
+--              commands (decimal, up to 65535) at the frames given; commands
+--              at the same frame are not allowed
+--   DCS_INJECT "first:every:from:to": from frame `first`, every `every`
+--              frames, send the next sound command (from, from + 1 ... to,
+--              decimal) to the latch as the game does, two writes (the low byte a frame later). Plays
+--              sounds the attract mode does not (sim/dcs against MAME for
+--              the speech)
 --
 -- Run: wtunit <set> -debug -debugger none -video none -sound none
 --      -nothrottle -autoboot_script dcs_trace.lua
@@ -123,9 +131,36 @@ local function apply_presses()
 	end
 end
 
+local inj_first, inj_every, inj_from, inj_to = (os.getenv("DCS_INJECT") or ""):match("(%d+):(%d+):(%d+):(%d+)")
+local inj_next, inj_lo = tonumber(inj_from), nil
+local inj_list = {}
+for fr, cmd in (os.getenv("DCS_INJECT_LIST") or ""):gmatch("(%d+):(%d+)") do inj_list[tonumber(fr)] = tonumber(cmd) end
+local inj_lo2, inj_lo2_frame
+local function inject()
+	if inj_lo2 and frame > inj_lo2_frame then
+		main:write_u16(0x01680000, inj_lo2)
+		inj_lo2 = nil
+	end
+	if inj_list[frame] then
+		local c = inj_list[frame]
+		main:write_u16(0x01680000, (c >> 8) & 0xff)
+		inj_lo2, inj_lo2_frame = c & 0xff, frame
+	end
+	if inj_first and frame >= tonumber(inj_first) and (frame - tonumber(inj_first)) % tonumber(inj_every) == 0
+	   and inj_next <= tonumber(inj_to) then
+		main:write_u16(0x01680000, (inj_next >> 8) & 0xff)
+		inj_lo = inj_next & 0xff
+		inj_next = inj_next + 1
+	elseif inj_lo then
+		main:write_u16(0x01680000, inj_lo)             -- the low byte a frame later
+		inj_lo = nil
+	end
+end
+
 frame_sub = emu.add_machine_frame_notifier(function()
 	frame = frame + 1
 	apply_presses()
+	inject()
 	if trace and frame == fullf and fullf > 0 then
 		dcs.debug:bpclear(bp)
 		bp = dcs.debug:bpset(0, "1", trace_cmd(true))
