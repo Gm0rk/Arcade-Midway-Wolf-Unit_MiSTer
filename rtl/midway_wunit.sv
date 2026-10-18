@@ -610,7 +610,8 @@ wire        dma_wr_wait;
 wire [15:0] dma_palette;
 
 wire  [8:0] blt_row;
-wire  [6:0] blt_lo, blt_hi, blt_raddr;
+wire  [6:0] blt_lo, blt_hi, blt_raddr, blt_rbase;
+wire        blt_radv;
 wire [63:0] blt_q;
 wire  [7:0] blt_be;
 wire        blt_req, blt_ack;
@@ -646,6 +647,8 @@ wunit_dma dma
 	.blt_lo      (blt_lo),
 	.blt_hi      (blt_hi),
 	.blt_raddr   (blt_raddr),
+	.blt_rbase   (blt_rbase),
+	.blt_radv    (blt_radv),
 	.blt_q       (blt_q),
 	.blt_be      (blt_be)
 );
@@ -661,7 +664,8 @@ assign dma_sd_addr = dsd_addr;
 
 always @(posedge clk) begin
 	if (reset) begin
-		dma_gfx_ack_i <= dma_gfx_req_i;
+		// the blitter sets its request to dma_gfx_ack_i (one end of the
+		// handshake only: both at once can leave them swapping)
 		dsd_req       <= dma_sd_ack;
 		dg_busy       <= 1'b0;
 	end
@@ -746,6 +750,8 @@ wunit_vram vram
 	.blt_lo         (blt_lo),
 	.blt_hi         (blt_hi),
 	.blt_raddr      (blt_raddr),
+	.blt_rbase      (blt_rbase),
+	.blt_radv       (blt_radv),
 	.blt_q          (blt_q),
 	.blt_be         (blt_be),
 
