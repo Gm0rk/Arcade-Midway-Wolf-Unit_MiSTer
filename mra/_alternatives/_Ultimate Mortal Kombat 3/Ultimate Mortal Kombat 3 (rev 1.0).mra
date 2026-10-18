@@ -1,6 +1,6 @@
 <misterromdescription>
 	<name>Ultimate Mortal Kombat 3 (rev 1.0)</name>
-	<mratimestamp>20261011</mratimestamp>
+	<mratimestamp>20261018</mratimestamp>
 	<mameversion>0289</mameversion>
 	<setname>umk3r10</setname>
 	<year>1994</year>
@@ -69,6 +69,8 @@
 			<part crc="dfd735da" name="l1.0_mortal_kombat_3_u54_ultimate.u54" map="01"/>
 			<part crc="2dff0c83" name="l1.0_mortal_kombat_3_u63_ultimate.u63" map="10"/>
 		</interleave>
+		<patch offset="0x196D718">5F 71</patch>
+		<patch offset="0x196D71C">6F 71</patch>
 		<patch offset="0x197277C">00 3E DF FF</patch>
 		<patch offset="0x1972B9C">47 01 07 0B 60 00 EC A2 80 C0 F0 16 9C FF 5F 0D 10 64 9B FF 00 03</patch>
 		<patch offset="0x19C07C0">90 2D B6 FF 30 BB B6 FF 20 43 B8 FF 02 02 66 00 68 00 0B 00 02 02 0D 00 FD FF 06 00 B7 00 0C 0C 40 64 B8 FF 80 55 B7 FF 90 66 B8 FF 20 65 B8 FF C0 79 B7 FF 80 67 B8 FF 80 65 B8 FF 20 81 B7 FF 10 68 B8 FF B0 64 B8 FF 50 38 B7 FF E0 69 B8 FF 00 45 B8 FF F0 4B B8 FF 00 00 00 00 40 45 B8 FF 50 4B B8 FF 00 00 00 00 C0 4E B8 FF 50 4F B8 FF 00 00 00 00 C0 45 B8 FF 20 4A B8 FF 00 00 00 00 60 46 B8 FF D0 47 B8 FF 00 00 00 00 E0 46 B8 FF B0 47 B8 FF 00 00 00 00 40 44 B8 FF 40 42 B8 FF 00 00 00 00 B0 43 B8 FF 60 47 B8 FF 00 00 00 00 10 66 B8 FF 00 00 00 00 40 6B B8 FF 00 00 00 00</patch>
