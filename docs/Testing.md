@@ -28,8 +28,8 @@ game; its alternative sets only need to boot and play.
 | Section | Passed | Tests | Status |
 |---|---|---|---|
 | Core-wide | 0 | 14 | Not started |
-| Mortal Kombat 3 | 0 | 25 | Not started |
-| Ultimate Mortal Kombat 3 | 0 | 25 | Not started |
+| Mortal Kombat 3 | 0 | 26 | Not started |
+| Ultimate Mortal Kombat 3 | 0 | 27 | Not started |
 | WWF WrestleMania | 0 | 14 | Not started |
 | 2 On 2 Open Ice Challenge | 0 | 16 | Not started |
 | NBA Hangtime | 0 | 22 | Not started |
@@ -100,6 +100,7 @@ Main set: mk3 (rev 2.1).
 | MK3-23 | OSD main page | Video Settings, Kombat Kodes, Move List, Finishing Moves, DIP Switches, Secret Menu, Service Mode, Pause when OSD is Open, Reset, Reset and close OSD; DIP Switches: Attract Sound, Bill Validator, Blood, Coinage, Coinage Source, Counters, Service Credit, Test Switch, Tilt, Violence, in that order | |
 | MK3-24 | DIP Switches page: Coinage Source Dipswitch, Coinage USA-Free Play | Free play: Start without coins; back to CMOS, coins needed again | |
 | MK3-25 | Rev 1.0: Mercy with Character left at Cyrax, another fighter winning round 3's first fight | The Mercy happens. Cyrax's own page has no Mercy line; a Mercy picked when Cyrax wins brings "The winner has no such move" | |
+| MK3-26 | OSD Secret Menu page | "Open EJB Menu (Attract Mode)" with "Hidden Alternate Test Menu" below it, nothing else | |
 
 ## Ultimate Mortal Kombat 3
 
@@ -117,7 +118,7 @@ Main set: umk3 (rev 1.2).
 | UMK3-8 | Two-player fight, and a one-player run through several opponents | No hang, no picture or sound faults | |
 | UMK3-9 | 2 on 2 mode | A team fight plays through | |
 | UMK3-10 | EJB Menu (OSD Secret Menu, in attract mode) | The menu opens; the hidden fighters switch on and off | |
-| UMK3-11 | Secret Menu: EJB Character Endings On | The game restarts; the EJB menu has Character Endings; an ending shows its story | |
+| UMK3-11 | Secret Menu: Scorpion - Smoke Voice Fix On | The game restarts; the EJB menu has Character Endings; an ending shows its story | |
 | UMK3-12 | Kombat Kode 100-100 | "Throwing disabled" on the next VS screen | |
 | UMK3-13 | Kombat Zone kode (any stage) | The fight is on that stage | |
 | UMK3-14 | Ultimate Kombat Kodes: Mileena, Ermac, Classic Sub-Zero | Each unlocks its fighter; kept after Save Settings and a reload | |
@@ -132,6 +133,8 @@ Main set: umk3 (rev 1.2).
 | UMK3-23 | Set rev 1.0 | Boots and plays a fight | |
 | UMK3-24 | OSD main page | Video Settings, Kombat Kodes, Move List, Finishing Moves, DIP Switches, Secret Menu, Service Mode, Pause when OSD is Open, Reset, Reset and close OSD; DIP Switches: Attract Sound, Bill Validator, Blood, Coinage, Coinage Source, Counters, Service Credit, Test Switch, Tilt, Violence, in that order | |
 | UMK3-25 | DIP Switches page: Coinage Source Dipswitch, Coinage USA-Free Play | Free play: Start without coins; back to CMOS, coins needed again | |
+| UMK3-26 | Secret Menu: Scorpion - Smoke Voice Fix On; Scorpion against any fighter, Spear (Back, Back, Low Punch) at a distance that hits | "Get over here!" plays to its end through the blood of the hit (Off: it stops after "Get ov..."); same with the rev 1.1 and 1.0 MRAs | |
+| UMK3-27 | OSD Secret Menu page | "Open EJB Menu (Attract Mode)" with "Hidden Alternate Test Menu" below it, a blank line, then "Scorpion - Smoke Voice Fix" (Off, On) with its note on two lines ("Get over here!" and / "Come here!" cut off Fix); every line fully readable, none cut off at the OSD's edge | |
 
 ## WWF WrestleMania
 
