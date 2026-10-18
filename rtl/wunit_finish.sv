@@ -31,7 +31,9 @@
 //
 //  A pick is entered only during FINISH HIM, by the player whose opponent's
 //  energy is 0, and (but for the Mercy) only if that player fights as the
-//  picked character; otherwise an OSD message says why. The player starts
+//  picked character; otherwise an OSD message says why. The Mercy is the
+//  winner's own, whatever the OSD's character (MK3 1.0 / p4.0's Cyrax has
+//  none: a message says so, as for any move a table lacks). The player starts
 //  10 frames after the pick (frames are the top level's running frames,
 //  osd_frame, so the OSD pausing the game holds the player too), then runs
 //  the program, one step at a time:
@@ -67,7 +69,8 @@ module wunit_finish
 	output reg [15:0] press1,        // IN1 bits held (active high)
 	output reg        info_req,      // one clock: show OSD info message `info`
 	output reg  [7:0] info,          // 4 not at FINISH HIM, 5 not the winner's character,
-	                                 // 6 entered, 7 the MRA has no table
+	                                 // 6 entered, 7 the MRA has no table, 8 the winner
+	                                 // has no such move
 	output reg [15:0] menu,          // OSD menu mask bits (set: hide): 0, 7-15 the
 	                                 // character (0 7 8 9 A: its number / 5, B-F: % 5),
 	                                 // 3 clear for the MK3 1.x table
@@ -217,7 +220,9 @@ always @(posedge clk) begin
 	end
 	else if (sel && !busy) begin
 		pick_slot <= sel_slot;
-		pick_char <= sel_char;
+		// the Mercy: the winner's own (every fighter's is the same input,
+		// but a table may have none for one)
+		pick_char <= (sel_slot == 3'd6) ? (e1 == 16'd0 ? c2 : c1) : sel_char;
 		p2        <= e1 == 16'd0;
 		right     <= e1 == 16'd0 ? $signed(x1) > $signed(x2) : $signed(x2) > $signed(x1);
 		if (table_id == 2'd0 || kstate == 16'd0) begin
@@ -237,15 +242,22 @@ always @(posedge clk) begin
 	end
 	else if (lk != 2'd0) begin
 		lk <= lk + 2'd1;
-		if (lk == 2'd3 && idx_q != 11'd0) begin
-			run  <= 1'b1;
-			pc   <= idx_q;
-			on    <= 1'b0;
-			left  <= LEAD;
-			held  <= 10'd0;
-			tapm  <= 10'd0;
-			t_on  <= 4'd4;
-			t_off <= 4'd4;
+		if (lk == 2'd3) begin
+			if (idx_q != 11'd0) begin
+				run  <= 1'b1;
+				pc   <= idx_q;
+				on    <= 1'b0;
+				left  <= LEAD;
+				held  <= 10'd0;
+				tapm  <= 10'd0;
+				t_on  <= 4'd4;
+				t_off <= 4'd4;
+			end
+			else begin
+				// the table has no such move for this fighter
+				info     <= 8'd8;
+				info_req <= 1'b1;
+			end
 		end
 	end
 	else if (frame && run) begin
