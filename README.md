@@ -105,9 +105,10 @@ from there.
 
 A taller picture grows downwards; use V-Shift to centre it again. V-Size
 uses the blank lines around the picture, so it has most room with the
-board's own 54.7 Hz Video Timing: at 57 Hz the largest Cabinet steps lose
-the bottom lines, and 60 Hz has hardly any blank lines to spare. Going
-taller in PVM mode also leaves less room for V-Shift.
+board's own 54.7 Hz Video Timing: at 57 Hz steps +5 and up (PVM) or +6 and
+up (Cabinet) lose the bottom lines, and at 60 Hz, with hardly any blank
+lines to spare, every taller step does (shorter ones are fine at any
+timing). Going taller in PVM mode also leaves less room for V-Shift.
 
 With CRT Adjust on, HDMI shows the adjusted picture too; turn it off for
 the untouched HDMI picture.
