@@ -87,6 +87,8 @@ module wunit_dma
 	output reg  [6:0] blt_lo,
 	output reg  [6:0] blt_hi,
 	input       [6:0] blt_raddr,
+	input       [6:0] blt_rbase,     // blt_raddr less this clock's step, and the step
+	input             blt_radv,
 	output reg [63:0] blt_q,
 	output reg  [7:0] blt_be
 );
@@ -153,7 +155,8 @@ always @(posedge clk) begin
 	if (rb_we && rb_wcol[1:0] == 2'd3) rowl3[rb_wcol[9:2]] <= rb_wdata;
 	rb_q <= {rowl3[{flush_bank, blt_raddr}], rowl2[{flush_bank, blt_raddr}],
 	         rowl1[{flush_bank, blt_raddr}], rowl0[{flush_bank, blt_raddr}]};
-	rb_v <= flush_valid[{blt_raddr, 2'b00} +: 4];
+	// the valid bits of entry blt_raddr: both candidates, the step picks
+	rb_v <= blt_radv ? flush_valid[{blt_rbase + 7'd1, 2'b00} +: 4] : flush_valid[{blt_rbase, 2'b00} +: 4];
 end
 
 always @(*) begin
