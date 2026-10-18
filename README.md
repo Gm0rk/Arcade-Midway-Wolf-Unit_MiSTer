@@ -77,8 +77,9 @@ the original board.
 - Up to four players (Open Ice, NBA Hangtime) or three (Rampage)
 - Pause (button or OSD), service mode switch
 - Game extras entered from the OSD: hidden developer menus (MK3, UMK3, NBA
-  Hangtime), UMK3's cut Character Endings restored, Kombat Kodes and
-  finishing moves (MK3, UMK3); see each game's page
+  Hangtime), UMK3's cut Character Endings restored and Scorpion's cut-off
+  voice fixed, Kombat Kodes and finishing moves (MK3, UMK3); see each game's
+  page
 - Move List (MK3, UMK3): every fighter's special moves and finishing moves,
   picked by fighter in the OSD and shown over the game's logo
 - Secret Codes (NBA Hangtime, Maximum Hangtime, Open Ice): every secret
