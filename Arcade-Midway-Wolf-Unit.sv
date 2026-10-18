@@ -338,7 +338,11 @@ localparam CONF_STR = {
 	"H2P8,Secret Menu;",
 	"P8-;",
 	"P8R[16],Open EJB Menu (Attract Mode);",
-	"H6P8O[17],EJB Character Endings,Off,On;",
+	"P8-,  Hidden Alternate Test Menu;",
+	"H6P8-;",
+	"H6P8O[17],Scorpion - Smoke Voice Fix,Off,On;",
+	"H6P8-,  \"Get over here!\" and;",
+	"H6P8-,  \"Come here!\" cut off Fix;",
 	"h2H3O[16],Secret Midway Menu,Off,On;",
 	"O[9],Service Mode,Off,On;",
 	"O[8],Pause when OSD is Open,On,Off;",
@@ -894,11 +898,16 @@ end
 // top of the controls. They share status bit 16; only the game's own line
 // is shown.
 //
-// "EJB Character Endings" (UMK3, Secret Menu page) runs the patched copy of the program ROM
-// the MRA loads after the graphics: the EJB menu gets back the CHARACTER
-// ENDINGS item that MK3 had and UMK3 left out of its menu (its code is
-// still in the ROM), and an ending shows the story as well as the cast
-// roll. The copy is chosen at reset; changing the option resets the game.
+// "Scorpion - Smoke Voice Fix" (UMK3, Secret Menu page; its lines are the
+// option and a two-line note, the OSD being 32 characters wide) runs the
+// patched copy of the program ROM the MRA loads after the graphics:
+// Scorpion's "Get over here!" and "Come here!" keep their sound channel when
+// the spear's blood sounds come (the game gave them the lowest priority, so
+// the hit cut them off after 12 frames); the same copy gives the EJB menu
+// back the CHARACTER ENDINGS item that MK3 had and UMK3 left out of its menu
+// (its code is still in the ROM), and an ending shows the story as well as
+// the cast roll. The copy is chosen at reset; changing the option resets the
+// game. (tools/cut_content.py)
 //////////////////////////////////////////////////////////////////
 
 reg         prog_alt;                // running the patched program copy
