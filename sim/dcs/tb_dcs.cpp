@@ -29,7 +29,7 @@
 //  then compares the DAC words.
 //
 //  Usage: Vdcs_audio <image> <events> <out> [-n N] [-samples FILE] [-lat L]
-//                    [-raw] [-host [-t S]]
+//                    [-raw] [-host [-t S] [-rt]]
 //    -n N          stop after N instructions (collapsed; default: when the
 //                  events run out, plus 100000)
 //    -t S          with -host: stop after S seconds (default: 1 s after the
@@ -37,6 +37,8 @@
 //    -samples FILE the DAC words, one per line ("cycle word", cycle in
 //                  10 MHz instruction cycles)
 //    -lat L        ROM latency in clocks (default 12)
+//    -rt           with -host: write at the event's real time, not the DSP's own
+//                  (the hardware: a write finds the latch full if the DSP lags)
 //    -raw          keep the DAC buffer waits (against dcs_trace.py events -raw)
 //
 //  Copyright (C) 2026 Gm0rk - GPL-3.0-or-later
@@ -80,19 +82,20 @@ static bool poll_op(unsigned pc, unsigned op)
 int main(int argc, char **argv)
 {
 	if (argc < 4) {
-		fprintf(stderr, "usage: %s <image> <events> <out> [-n N] [-samples FILE] [-lat L] [-raw] [-host [-t S]]\n", argv[0]);
+		fprintf(stderr, "usage: %s <image> <events> <out> [-n N] [-samples FILE] [-lat L] [-raw] [-host [-t S] [-rt]]\n", argv[0]);
 		return 1;
 	}
 	long limit = -1;
 	int lat = 12;
 	FILE *fs = nullptr;
-	bool host = false, raw = false;
+	bool host = false, raw = false, rt = false;
 	double tlimit = -1;
 	for (int i = 4; i < argc; i++) {
 		if (!strcmp(argv[i], "-n") && i + 1 < argc) limit = atol(argv[++i]);
 		else if (!strcmp(argv[i], "-samples") && i + 1 < argc) fs = fopen(argv[++i], "w");
 		else if (!strcmp(argv[i], "-lat") && i + 1 < argc) lat = atoi(argv[++i]);
 		else if (!strcmp(argv[i], "-host")) host = true;
+		else if (!strcmp(argv[i], "-rt")) rt = true;
 		else if (!strcmp(argv[i], "-raw")) raw = true;
 		else if (!strcmp(argv[i], "-t") && i + 1 < argc) tlimit = atof(argv[++i]);
 	}
@@ -153,6 +156,7 @@ int main(int argc, char **argv)
 	bool reset_next = false;
 	std::vector<unsigned> pending_wr;   // writes that follow a reset
 	uint64_t cycles = 0;        // 10 MHz ticks
+	unsigned maxtok = 0, lost = 0;
 
 	while (n < limit) {
 		// channel 0
@@ -183,18 +187,21 @@ int main(int argc, char **argv)
 			}
 		}
 		unsigned st = r->dcs_audio__DOT__dsp__DOT__st;
+		if ((unsigned)r->dcs_audio__DOT__dsp__DOT__tok > maxtok) maxtok = r->dcs_audio__DOT__dsp__DOT__tok;
 		if (host) {
 			// by time: a write when the DSP's own time (ticks less the
 			// instruction cycles it owes) gets there, as MAME's scheduler
-			// hands it over between two of its instructions
+			// hands it over between two of its instructions; with -rt at the
+			// real time, as the hardware gets it
 			uint64_t dsp_time = cycles - r->dcs_audio__DOT__dsp__DOT__tok;
-			while (ei < ev.size() && ev[ei].t * 10.0 <= (double)(ev[ei].kind == 'W' && !top->dcs_reset ? dsp_time : cycles)) {
+			while (ei < ev.size() && ev[ei].t * 10.0 <= (double)(ev[ei].kind == 'W' && !top->dcs_reset && !rt ? dsp_time : cycles)) {
 				const Event &e = ev[ei++];
 				if (e.kind == 'C')
 					top->dcs_reset = (e.v >> 4) & 1;
 				else if (e.kind == 'W') {
 					top->host_wr = 1;
 					top->host_data = e.v;
+					if (r->dcs_audio__DOT__in_full) lost++;
 					break;                       // one write a clock
 				}
 			}
@@ -258,6 +265,7 @@ int main(int argc, char **argv)
 	}
 	fclose(out);
 	if (fs) fclose(fs);
+	fprintf(stderr, "max owed %u cycles, %u host writes found the latch full\n", maxtok, lost);
 	fprintf(stderr, "%ld instructions, %llu clocks, %llu cycles, %zu/%zu events\n", n,
 	        (unsigned long long)clocks, (unsigned long long)cycles, ei, ev.size());
 	delete top;
