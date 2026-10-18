@@ -29,7 +29,7 @@
 //  glyph row: about 10 clocks of the 84 a cell has), and taken over when
 //  the cell ends; in the horizontal blanking the row's first segment and
 //  the line's first cell are. The logo's dot is read for the dot on the
-//  outputs (two clocks of the 12 a dot has).
+//  outputs (three clocks of the 12 a dot has).
 //  The picture goes through unchanged (same clock, no delay) when the
 //  window is off, and the timing signals always do.
 //
@@ -242,25 +242,33 @@ end
 // The logo's dot: its colour number, then its colour
 //----------------------------------------------------------------------------
 
+// (registered: the logo only changes with the OSD, a line's first dot only
+// in the blanking, so the ROM address is one add from the dot counter)
 reg  [16:0] logo_base;            // the logo's first dot
-always @(*) begin
+reg  [16:0] line_base;            // this line's first dot
+reg   [2:0] logo_n;               // the logo's palette
+always @(posedge clk) begin
 	case (logo)
-		3'd2:    logo_base = 17'(1 * LW * LH);
-		3'd3:    logo_base = 17'(2 * LW * LH);
-		3'd4:    logo_base = 17'(3 * LW * LH);
-		3'd5:    logo_base = 17'(4 * LW * LH);
-		default: logo_base = 17'd0;
+		3'd2:    logo_base <= 17'(1 * LW * LH);
+		3'd3:    logo_base <= 17'(2 * LW * LH);
+		3'd4:    logo_base <= 17'(3 * LW * LH);
+		3'd5:    logo_base <= 17'(4 * LW * LH);
+		default: logo_base <= 17'd0;
 	endcase
+	logo_n    <= logo - 3'd1;
+	line_base <= logo_base + {2'b00, lrow};
 end
 
-wire [16:0] logo_a = logo_base + {2'b00, lrow} + {9'd0, x[8:1]};
-wire  [2:0] logo_n = logo - 3'd1;
-reg   [3:0] logo_q;
+wire [16:0] logo_a = line_base + {9'd0, x[8:1]};
+reg   [3:0] logo_q, logo_d;
 reg  [23:0] pal_q;
 
+// the ROM spans many RAM blocks, whose outputs are selected before the
+// palette: that selection gets a clock of its own (logo_d)
 always @(posedge clk) begin
 	logo_q <= logo_rom[logo_a];
-	pal_q  <= pal_rom[{logo_n, logo_q}];
+	logo_d <= logo_q;
+	pal_q  <= pal_rom[{logo_n, logo_d}];
 end
 
 //----------------------------------------------------------------------------
