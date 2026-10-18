@@ -165,3 +165,39 @@ make -C sim/movelist
 python3 sim/movelist/check.py              # every page
 sim/movelist/obj_dir/Vwunit_movelist 12 umk3.ppm -logo 2
 ```
+
+## `sdram/` - the SDRAM controller's command timing
+
+`tb_sdram.cpp` runs `rtl/sdram.sv` on its own with random traffic as the
+core makes it (sound reads in bank 0; the CPU's main RAM writes, back to
+back, and its reads anywhere; blitter reads; the RAM clear on the write
+port, all main RAM in bank 3) and checks every command it sends against
+the chips of the MiSTer SDRAM modules (AS4C16M16SA / AS4C32M16SB, -6 and
+-7): ACTIVE to ACTIVE in a bank (tRC), ACTIVE to READ / WRITE (tRCD), a
+bank's auto precharge over before its next ACTIVE and before a refresh
+(tRAS, tWR, tRP), refresh to the next command (tRFC). It prints the
+shortest gaps and the shortfalls; the read path's 2-clock tRCD and
+precharge (20.8 ns, 0.2 ns under the -7 figure) are the original
+controller's and only reported.
+
+```
+make -C sim/sdram
+sim/sdram/obj_dir/Vsdram 400000          # clocks [seed]
+```
+
+## `vram/` - the VRAM controller against the DDRAM port, through resets
+
+`tb_vram.cpp` runs `rtl/wunit_vram.sv` against a model of the DDR3 port
+(Avalon-MM: random waitrequest, read latency, gaps between read beats), the
+four clients making random requests (display rows, shift-register loads and
+stores, blitter rows, CPU reads and writes; in reset each sets its request
+to its acknowledge, as the board's do) and random resets, many in the
+middle of a burst. It checks that a waiting command stays as it is, that a
+write burst gets all its beats back to back before anything else, that
+every read beat is taken, that operations without a reset move the right
+data, and that no client waits forever.
+
+```
+make -C sim/vram
+sim/vram/obj_dir/Vwunit_vram 4000000 3000    # clocks, one reset in about 3000 clocks
+```
