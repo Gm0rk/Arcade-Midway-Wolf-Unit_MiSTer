@@ -185,11 +185,10 @@ always @(posedge clk) begin
 	if (stage[3])                       // palette data valid
 		a_rgb <= a_on ? pal_q[14:0] : 15'd0;
 
-	// CPU palette reads use the port outside stage 2
-	if (reset) begin
-		pal_rack <= pal_rreq;
+	// CPU palette reads use the port outside stage 2 (in reset the board
+	// sets its request to pal_rack: one end of the handshake only)
+	if (reset)
 		cpu_pend <= 1'b0;
-	end
 	else begin
 		if (pal_rreq != pal_rack && !cpu_pend && !cpu_rd)
 			cpu_pend <= 1'b1;
