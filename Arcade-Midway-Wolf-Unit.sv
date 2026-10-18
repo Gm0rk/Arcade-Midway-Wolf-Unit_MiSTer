@@ -304,7 +304,9 @@ localparam CONF_STR = {
 	"HAHDP9rU,Babality D B B F HP;",
 	"H9HFP9rU,Babality F F B D LK;",
 	"P9-;",
-	"P9rV,Mercy (RN) D D;",
+	"hEP9rV,Mercy (RN) D D;",
+	"h7HEP9rV,Mercy (RN) D D;",
+	"H7HEh3P9rV,Mercy (RN) D D;",
 	// NBA Hangtime, Maximum Hangtime / Open Ice: Secret Codes
 	"h2H3O[93:92],Secret Codes,Off,Page 1,Page 2;",
 	"h2H7O[112:110],Secret Codes,Off,Secret Players 1,Secret Players 2,Secret Players 3,Tonight's Game,Face-off;",
@@ -345,7 +347,7 @@ localparam CONF_STR = {
 	"R[0],Reset and close OSD;",
 	"J1,B1,B2,B3,B4,B5,B6,Start,Coin,Test,Pause;",
 	"jn,A,B,X,Y,L,R,Start,Select,,;",
-	"I,Kode set for next VS screen,Kode set for next game over,Kombat Kode entered,Only during FINISH HIM,The winner is another fighter,Finishing move entered,Finishing moves need this release's MRA;",
+	"I,Kode set for next VS screen,Kode set for next game over,Kombat Kode entered,Only during FINISH HIM,The winner is another fighter,Finishing move entered,Finishing moves need this release's MRA,The winner has no such move;",
 	"V,v",`BUILD_DATE
 };
 
@@ -465,8 +467,13 @@ end
 
 wire ram_clearing;
 reg  [7:0] opt_rst = 8'd0;          // reset after the cut-content option changes
-wire reset = RESET | status[0] | buttons[1] | rom_download | ~rom_loaded | (boot_hold != 26'd0) | ram_clearing |
-             (opt_rst != 8'd0);
+// the core's reset, registered: its sources (a 26-bit count among them) and
+// its fan-out into every block then each get a clock of their own; this
+// also takes the framework's RESET into clk_sys
+wire reset_in = RESET | status[0] | buttons[1] | rom_download | ~rom_loaded | (boot_hold != 26'd0) | ram_clearing |
+                (opt_rst != 8'd0);
+reg  reset = 1'b1;
+always @(posedge clk_sys) reset <= reset_in;
 
 //////////////////////////////////////////////////////////////////
 // Game configuration
@@ -739,7 +746,8 @@ end
 wire [4:0] ml_sel = status[117:113];      // Move List: 0 off, else the OSD's character + 1
 wire movelist_on = is_mk && ml_sel != 5'd0 && ml_sel <= (is_umk3 ? 5'd23 : 5'd15);
 wire secrets_on  = ((status[93:92] != 2'd0) & is_hangtime) | ((status[112:110] != 3'd0) & is_openice);
-wire pause = pause_toggle | (OSD_STATUS & ~status[8]) | movelist_on | secrets_on;
+reg  window_on;                           // either window is up (registered: see Video)
+wire pause = pause_toggle | (OSD_STATUS & ~status[8]) | window_on;
 
 //////////////////////////////////////////////////////////////////
 // DSW
@@ -879,11 +887,12 @@ end
 //////////////////////////////////////////////////////////////////
 // Hidden menus and cut content
 //
-// "Open EJB Menu" (MK3, UMK3: on the Secret Menu page, P8) and "Open Secret
-// Midway Menu" (NBA Hangtime, Maximum Hangtime) enter the game's own button
-// code for its hidden menu (rtl/wunit_macro.sv lists the codes); the
-// buttons are pressed on IN0 on top of the controls. They share status bit
-// 16; only the game's own line is shown.
+// "Open EJB Menu" (MK3, UMK3: on the Secret Menu page, P8) and "Secret
+// Midway Menu" (NBA Hangtime, Maximum Hangtime: Off / On, back to Off once
+// started) enter the game's own button code for its hidden menu
+// (rtl/wunit_macro.sv lists the codes); the buttons are pressed on IN0 on
+// top of the controls. They share status bit 16; only the game's own line
+// is shown.
 //
 // "EJB Character Endings" (UMK3, Secret Menu page) runs the patched copy of the program ROM
 // the MRA loads after the graphics: the EJB menu gets back the CHARACTER
@@ -1003,8 +1012,10 @@ wunit_kodes kodes
 // differ for MK3 1.0 / p4.0 also bit 3, which on MK3 / UMK3 says whether
 // the MRA gave the MK3 1.x table). Each move is a trigger on status bits
 // 57-62 by slot (Fatality 1, Fatality 2, Stage Fatality, Animality,
-// Friendship, Babality), the Mercy, shared by all, on 63 (written rP-rV,
-// MiSTer's short form for bits 32-63: the page has 160-odd lines). The player
+// Friendship, Babality), the Mercy on 63 (written rP-rV, MiSTer's short
+// form for bits 32-63: the page has 160-odd lines). The Mercy line shows
+// for every fighter that has one (all but MK3 1.x's Cyrax) and enters the
+// winner's own. The player
 // enters a pick at FINISH HIM on the winner's controls; the lines, the
 // programs and the table byte of the MRA (config byte 14) come from
 // tools/finishing_moves.py.
@@ -1245,13 +1256,24 @@ wire [2:0] ml_logo = movelist_on ? (is_umk3 ? 3'd2 : 3'd1) :
                      is_hangtime ? (cfg_ht == 3'd0 ? 3'd0 : cfg_ht == 3'd1 ? 3'd4 : 3'd5) : 3'd0;
 wire [7:0] ml_r, ml_g, ml_b;
 
+// the window's selection, registered: it only changes with the OSD, and the
+// game-type and option logic behind it then stays off the window's
+// per-dot paths (the logo ROM's address, the picture into the CRT stage)
+reg  [6:0] window_page;
+reg  [2:0] window_logo;
+always @(posedge clk_sys) begin
+	window_on   <= movelist_on | secrets_on;
+	window_page <= ml_page;
+	window_logo <= ml_logo;
+end
+
 wunit_movelist movelist
 (
 	.clk     (clk_sys),
 	.ce_pix  (ce_pix),
-	.enable  (movelist_on | secrets_on),
-	.page    (ml_page),
-	.logo    (ml_logo),
+	.enable  (window_on),
+	.page    (window_page),
+	.logo    (window_logo),
 	.r_in    (core_r),
 	.g_in    (core_g),
 	.b_in    (core_b),
