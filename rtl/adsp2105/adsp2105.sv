@@ -31,13 +31,22 @@
 //  internal program memory, so such a fetch needs no clock of its own.
 //    S_TOP   instruction boundary: SPORT1 half-buffer moves, interrupts,
 //            start of the fetch
-//    S_OPW   opcode arrives; next PC and the DO-loop end check
-//    S_DEC   decode: condition, operands, DAG addresses, memory plan
-//    S_ACC   memory access issued (the ALU, MAC product and shifter work
-//            during it: they never need the memory's data)
+//    S_OPW   opcode arrives; next PC and the DO-loop end check; the
+//            instruction's class decoded
+//    S_DEC   decode: condition, operands, the DAG registers it modifies,
+//            the shift code, memory plan
+//    S_EX1   execute: ALU, MAC product, shifter, DAG post-modify, and the
+//            write back's plan (which registers take which result); then
+//            the memory accesses, if any (they never feed the execute)
+//    S_ACC   memory access issued
 //    S_ACCW  memory access done
-//    S_EX1   execute when there is no memory access
 //    S_EX2   write back: MAC accumulate, registers, flags, stacks, PC
+//  Each state works from what the one before registered, so no state has
+//  more than one step's logic (timing at 96 MHz): the write back only
+//  routes results to the registers its plan names, in the bank its plan
+//  names, and the decode reads the data registers through copies of the
+//  bank bit made a clock before (MSTAT never changes in the two clocks
+//  before a decode).
 //
 //  Memory
 //  ------
@@ -165,6 +174,15 @@ localparam [3:0] S_RESET = 4'd0,  S_BOOTLEN = 4'd1, S_BOOTW = 4'd2, S_TOP  = 4'd
 
 // access kinds (what S_ACCW does with the result)
 localparam [1:0] K_M1 = 2'd0, K_M2 = 2'd1, K_DMA = 2'd2;
+
+// where a register move's value comes from (the write back's plan)
+localparam [2:0] MV_O   = 3'd0,          // o_mv, read at decode
+                 MV_SRL = 3'd1,          // SR0 / SR1 after the shift
+                 MV_SRH = 3'd2,
+                 MV_XSE = 3'd3,          // SE after the shift
+                 MV_M1H = 3'd4,          // memory word: program memory's upper 16 bits
+                 MV_M1L = 3'd5,          //   data memory
+                 MV_IMM = 3'd6;          // immediate
 
 //----------------------------------------------------------------------------
 // Helper functions (MAME 2100ops.hxx)
@@ -358,13 +376,27 @@ reg  [12:0] tok;                // instruction cycles owed (see the header)
 // data registers, two banks of 32 slots (MSTAT bit 0 selects)
 reg  [15:0] rf [0:63];
 reg   [6:0] mstat;
-wire        bk = mstat[M_BANK];
+
+// MSTAT's bank bit a clock late, for the decode's reads (one copy per group
+// of them, kept apart), and the bank the write back uses (set at execute)
+(* preserve *) reg bk_a;        // ALU operands
+(* preserve *) reg bk_m;        // MAC operands
+(* preserve *) reg bk_s;        // shifter operands
+(* preserve *) reg bk_v;        // moves and memory writes
+(* preserve *) reg wbk;
+always @(posedge clk) {bk_a, bk_m, bk_s, bk_v} <= {4{mstat[M_BANK]}};
 
 // DAG registers
 reg  [13:0] ir [0:7];
 reg  [13:0] mr [0:7];           // M registers (14 bits, read sign-extended)
 reg  [13:0] lr [0:7];
 reg  [13:0] br [0:7];           // circular buffer bases (set when I or L is written)
+reg  [13:0] lm [0:7];           // lmask(L), kept with L
+integer kl;
+initial for (kl = 0; kl < 8; kl = kl + 1) begin
+	lr[kl] = 14'd0;                 // the power-up value
+	lm[kl] = 14'h3fff;              // lmask(0)
+end
 
 reg   [7:0] px;
 reg  [13:0] cntr;
@@ -425,6 +457,9 @@ reg  [13:0] ab_count;                    // words per half buffer: size / (2 inc
 reg         ab_due;                      // a half buffer is due at the next boundary
 reg         ab_blk;                      // moving it
 reg  [14:0] ab_reg;                      // MAME's reg while moving
+reg  [14:0] ab_end;                      // the buffer's end, base + size: a clock late (the
+                                         // instruction that changes them is over by then)
+always @(posedge clk) ab_end <= {1'b0, br[ab_ireg]} + {1'b0, ab_size};
 reg  [13:0] ab_left;
 reg         dv_busy;                     // count = size / (2 incs), one bit a clock
 reg   [3:0] dv_n;
@@ -470,7 +505,10 @@ reg  [13:0] m1_addr, m2_addr;
 reg  [23:0] m1_wdata;
 reg  [23:0] m1_q, m2_q;
 
-// DAG post-modify results, written back at the end
+// DAG post-modify: the registers it works from (at decode; 1: the memory
+// access's DAG, or MODIFY's; 2: a dual read's program memory DAG), the
+// results (at execute), written back at the end
+reg  [13:0] g1_i, g1_m, g1_b, g1_l, g2_i, g2_m, g2_b, g2_l;
 reg         d1_on, d2_on;
 reg   [2:0] d1_i, d2_i;
 reg  [13:0] d1_v, d2_v;
@@ -481,6 +519,7 @@ reg  [15:0] o_mv;                           // register value for moves and memo
 reg  [47:0] o_mr;                           // MR as {MR2, MR1, MR0}
 reg  [31:0] o_sr;                           // SR as {SR1, SR0}
 reg  [15:0] o_se, o_sb, o_af, o_ay0;
+reg  [12:0] o_sd;                           // the shift code taken apart (sh_dec)
 
 // execute results
 reg  [15:0] x_alu;
@@ -490,24 +529,64 @@ reg  [31:0] x_sr;
 reg  [15:0] x_se, x_sb;
 reg  [15:0] x_af, x_ay0;                 // DIVS / DIVQ
 
+// the write back's plan (made at execute)
+reg  [18:0] w_a;                         // data registers taking an ALU / MAC / shifter / divide result
+reg  [18:0] w_m;                         //   the move's value
+reg   [7:0] w_d;                         //   a dual read's memory word (AX0-MY1)
+reg         w_afdiv;                     // AF from DIVS / DIVQ (else the ALU)
+reg         w_sat;                       // MR from SAT MR (else the MAC)
+reg         w_mr2s;                      // MR2 from a move to MR1 (its sign; else MR2's sign extension)
+reg         w_ast_x, w_ast_mv;           // ASTAT from x_ast; MV from the accumulate
+reg         w_msub, w_mrnd, w_mzb;       // accumulate: subtract, round, from zero
+reg         mv_on;                       // a register move (MAME write_reg)
+reg   [1:0] mv_g;                        //   its group and code
+reg   [3:0] mv_c;
+reg   [2:0] mv_src;                      //   its value (MV_*)
+reg  [15:0] mv_imm;
+reg  [13:0] mv_lm, mv_ir;                //   lmask(L) and I of the DAG register it names
+reg  [18:0] pa, pm;                      // (the plan as it is made)
+reg   [7:0] pd;
+reg         p_mvon;
+reg   [1:0] p_g;
+reg   [3:0] p_c;
+reg   [2:0] p_src;
+
 //----------------------------------------------------------------------------
-// Instruction classes (MAME execute_run switch on op[23:16])
+// Instruction classes (MAME execute_run switch on op[23:16]), decoded as the
+// opcode comes in
 //----------------------------------------------------------------------------
 
-wire c_cond_am = (opc[7:3] == 5'b00100);                 // 20-27 conditional ALU/MAC
-wire c_move_am = (opc[7:3] == 5'b00101);                 // 28-2F with register move
-wire c_mem_am  = (opc[7:6] == 2'b01) && (opc[5:4] != 2'b00);   // 50-7F with memory
-wire c_dual    = (opc[7:6] == 2'b11);                    // C0-FF dual read
-wire c_am      = c_cond_am | c_move_am | c_mem_am | c_dual;
+function automatic [7:0] classes(input [23:0] o);
+	reg [7:0] c;
+	reg       cond_am, move_am, mem_am, dual;
+	begin
+		c       = o[23:16];
+		cond_am = (c[7:3] == 5'b00100);                      // 20-27 conditional ALU/MAC
+		move_am = (c[7:3] == 5'b00101);                      // 28-2F with register move
+		mem_am  = (c[7:6] == 2'b01) && (c[5:4] != 2'b00);    // 50-7F with memory
+		dual    = (c[7:6] == 2'b11);                         // C0-FF dual read
+		classes = {cond_am, move_am, dual,
+		           cond_am | move_am | mem_am | dual,        // ALU / MAC
+		           dual ? 1'b0 : o[18],                      // result to AF / MF
+		           (c >= 8'h0E) && (c <= 8'h13),             // shift
+		           (c == 8'h0F),                             // shift immediate
+		           // conditional (condition in op[3:0])
+		           (c == 8'h02 && !o[15]) || c == 8'h0A || c == 8'h0B || c == 8'h0E ||
+		           (c[7:3] == 5'b00011) || cond_am};
+	end
+endfunction
+
+reg  [7:0] cls;
+wire c_cond_am  = cls[7];
+wire c_move_am  = cls[6];
+wire c_dual     = cls[5];
+wire c_am       = cls[4];
 // result {MR, AR, MF, AF} from op[18:17] (dual read: op[17], MR or AR)
-wire am_alu    = op[17];
-wire am_f      = c_dual ? 1'b0 : op[18];
-wire c_shift   = (opc >= 8'h0E) && (opc <= 8'h13);
-wire c_shimm   = (opc == 8'h0F);
-
-// conditional instruction classes (condition in op[3:0])
-wire c_has_cond = (opc == 8'h02 && !op[15]) || opc == 8'h0A || opc == 8'h0B || opc == 8'h0E ||
-                  (opc[7:3] == 5'b00011) || c_cond_am;
+wire am_alu     = op[17];
+wire am_f       = cls[3];
+wire c_shift    = cls[2];
+wire c_shimm    = cls[1];
+wire c_has_cond = cls[0];
 
 //----------------------------------------------------------------------------
 // Interrupt selection (MAME adsp2101 check_irqs)
@@ -535,10 +614,11 @@ wire  [8:0] ab_lvl = ab_wr - ab_rd;
 // Register access helpers
 //----------------------------------------------------------------------------
 
-// MAME read_reg0-3 (no side effects; TOPPCSTACK's pop is done by the caller)
+// MAME read_reg0-3 (no side effects; TOPPCSTACK's pop is done by the caller;
+// decode only)
 function automatic [15:0] rd_grp(input [1:0] g, input [3:0] c);
 	case (g)
-		2'd0: rd_grp = rf[{bk, 1'b0, c}];
+		2'd0: rd_grp = rf[{bk_v, 1'b0, c}];
 		2'd1, 2'd2: case (c[3:2])
 			2'd0:    rd_grp = {2'b00, ir[{g[1], c[1:0]}]};
 			2'd1:    rd_grp = {{2{mr[{g[1], c[1:0]}][13]}}, mr[{g[1], c[1:0]}]};   // (no nested call: Verilator 5.020 misorders it)
@@ -551,7 +631,7 @@ function automatic [15:0] rd_grp(input [1:0] g, input [3:0] c);
 			4'h3: rd_grp = {10'h000, imask};
 			4'h4: rd_grp = {11'h000, icntl};
 			4'h5: rd_grp = {2'b00, cntr};
-			4'h6: rd_grp = rf[{bk, R_SB}];
+			4'h6: rd_grp = rf[{bk_v, R_SB}];
 			4'h7: rd_grp = {8'h00, px};
 			4'hF: rd_grp = {2'b00, (pc_sp != 5'd0) ? pcs[pc_sp[3:0] - 4'd1] : pcs[0]};
 			default: rd_grp = 16'h0000;          // RX0, RX1 (nothing received), invalid
@@ -585,20 +665,30 @@ endfunction
 // Shifter (MAME shift_op / shift_op_imm): {SS, SE, SB, SR} after the op
 //----------------------------------------------------------------------------
 
-function automatic [64:0] shifter(input [3:0] f, input [7:0] sc, input [15:0] x,
+// the shift code taken apart (at decode, a clock before the shift):
+// {s > 0, s < 32, s > -32, |s| (5 bits), (s - 1) & 31}, s the code signed
+function automatic [12:0] sh_dec(input [7:0] sc);
+	reg signed [8:0] s, ns, sm1;
+	begin
+		s   = $signed({sc[7], sc});
+		ns  = -s;
+		sm1 = s - 9'sd1;
+		sh_dec = {s > 0, s < 32, s > -32, (s > 0) ? s[4:0] : ns[4:0], sm1[4:0]};
+	end
+endfunction
+
+function automatic [64:0] shifter(input [3:0] f, input [12:0] sd, input [15:0] x,
                                   input [31:0] sr_in, input [15:0] se_in, input [15:0] sb_in,
                                   input [7:0] st_in);
-	reg signed [8:0]  s;          // shift code, signed
-	reg signed [8:0]  ns;         // -s
+	reg               pos, lt32, gtm32;  // s > 0, s < 32, s > -32
 	reg        [4:0]  n;          // |s| for in-range shifts
+	reg        [4:0]  nm1;        // (s - 1) & 31
 	reg        [31:0] xv, r;
 	reg        [15:0] se, sb, v;
 	reg               ss;
 	reg        [4:0]  cnt;
 	begin
-		s  = $signed({sc[7], sc});
-		ns = -s;
-		n  = (s > 0) ? s[4:0] : ns[4:0];
+		{pos, lt32, gtm32, n, nm1} = sd;
 		r  = sr_in;
 		se = se_in;
 		sb = sb_in;
@@ -606,32 +696,32 @@ function automatic [64:0] shifter(input [3:0] f, input [7:0] sc, input [15:0] x,
 		case (f)
 			4'h0, 4'h1: begin                                   // LSHIFT (HI)
 				xv = {x, 16'h0000};
-				if (s > 0) xv = (s < 32) ? (xv << n) : 32'd0;
-				else       xv = (s > -32) ? (xv >> n) : 32'd0;
+				if (pos) xv = lt32 ? (xv << n) : 32'd0;
+				else     xv = gtm32 ? (xv >> n) : 32'd0;
 				r = f[0] ? (sr_in | xv) : xv;
 			end
 			4'h2, 4'h3: begin                                   // LSHIFT (LO)
 				xv = {16'h0000, x};
-				if (s > 0) xv = (s < 32) ? (xv << n) : 32'd0;
-				else       xv = (s > -32) ? (xv >> n) : 32'd0;
+				if (pos) xv = lt32 ? (xv << n) : 32'd0;
+				else     xv = gtm32 ? (xv >> n) : 32'd0;
 				r = f[0] ? (sr_in | xv) : xv;
 			end
 			4'h4, 4'h5, 4'h6, 4'h7: begin                       // ASHIFT (HI / LO)
 				xv = f[1] ? {{16{x[15]}}, x} : {x, 16'h0000};
-				if (s > 0) xv = (s < 32) ? (xv << n) : 32'd0;
-				else       xv = (s > -32) ? ($signed(xv) >>> n) : ($signed(xv) >>> 31);
+				if (pos) xv = lt32 ? (xv << n) : 32'd0;
+				else     xv = gtm32 ? ($signed(xv) >>> n) : ($signed(xv) >>> 31);
 				r = f[0] ? (sr_in | xv) : xv;
 			end
 			4'h8, 4'h9: begin                                   // NORM (HI)
 				xv = {x, 16'h0000};
-				if (s > 0) xv = $signed({st_in[AC], xv[31:1]}) >>> ((s - 9'sd1) & 9'sd31);
-				else       xv = (s > -32) ? (xv << n) : 32'd0;
+				if (pos) xv = $signed({st_in[AC], xv[31:1]}) >>> nm1;
+				else     xv = gtm32 ? (xv << n) : 32'd0;
 				r = f[0] ? (sr_in | xv) : xv;
 			end
 			4'hA, 4'hB: begin                                   // NORM (LO)
 				xv = {16'h0000, x};
-				if (s > 0) xv = (s < 32) ? (xv >> n) : 32'd0;
-				else       xv = (s > -32) ? (xv << n) : 32'd0;
+				if (pos) xv = lt32 ? (xv >> n) : 32'd0;
+				else     xv = gtm32 ? (xv << n) : 32'd0;
 				r = f[0] ? (sr_in | xv) : xv;
 			end
 			4'hC, 4'hD: begin                                   // EXP (HI), EXP (HIX)
@@ -688,27 +778,63 @@ end
 
 integer k;
 reg        tok_use;
+reg        tok_nz;                 // tok != 0
+reg        ab_left_nz;             // ab_left != 0
 reg [14:0] cw;                     // circ() result
 reg [23:0] ar;                     // alu() result
 reg [64:0] shr;                    // shifter() result
-reg [47:0] macr;                   // MAC accumulate result
-reg        mac_sub, mac_rnd;
-reg [15:0] mvv;                    // value moved
-reg [15:0] w0v;                    // group-0 write value
-reg  [3:0] w0c;                    // group-0 write code
-reg        w0on;
-reg  [2:0] di;
+reg        pb;                     // the memory access's DAG (decode)
 
-// group-0 register write (MAME write_reg0): SE and MR2 sign-extend 8 bits,
-// MR1 also sets MR2 to its sign
-task automatic wr0(input [3:0] c, input [15:0] v);
-	case (c)
-		4'h9:    rf[{bk, R_SE}]  <= sext8(v);
-		4'hC:    begin rf[{bk, R_MR1}] <= v; rf[{bk, R_MR2}] <= {16{v[15]}}; end
-		4'hD:    rf[{bk, R_MR2}] <= sext8(v);
-		default: rf[{bk, 1'b0, c}] <= v;
+//----------------------------------------------------------------------------
+// Write back values
+//----------------------------------------------------------------------------
+
+// the move's value
+reg  [15:0] mv_v;
+always @(*)
+	case (mv_src)
+		MV_O:    mv_v = o_mv;
+		MV_SRL:  mv_v = x_sr[15:0];
+		MV_SRH:  mv_v = x_sr[31:16];
+		MV_XSE:  mv_v = x_se;
+		MV_M1H:  mv_v = m1_q[23:8];
+		MV_M1L:  mv_v = m1_q[15:0];
+		default: mv_v = mv_imm;
 	endcase
-endtask
+
+// MAC accumulate (MAME: rounding looks at the product). One add of three:
+// base, the product or its complement, and the rounding constant with the
+// subtraction's carry in
+wire [47:0] macs = (w_mzb ? 48'd0 : o_mr) + ({{16{x_prod[31]}}, x_prod} ^ {48{w_msub}}) +
+                   {32'd0, w_mrnd, 14'd0, w_msub};
+wire [47:0] macr = {macs[47:17], macs[16] & !(w_mrnd && x_prod[15:0] == 16'h8000), macs[15:0]};
+wire        mac_mv = !((macr[39:31] == 9'h000) || (macr[39:31] == 9'h1ff));
+
+// per data register slot: a dual read's memory word, else the move's value
+// (MAME write_reg0: SE and MR2 sign-extend 8 bits, MR1 also sets MR2 to its
+// sign; SB 5 bits), else the ALU / MAC / shifter / divide result
+reg  [15:0] wv [0:18];
+wire [18:0] w_en = w_a | w_m | {11'd0, w_d};
+integer kw;
+always @(*) begin
+	for (kw = 0; kw < 4; kw = kw + 1)
+		wv[kw] = w_d[kw] ? m1_q[15:0] : mv_v;
+	for (kw = 4; kw < 8; kw = kw + 1)
+		wv[kw] = w_d[kw] ? m2_q[23:8] : mv_v;
+	wv[R_AY0] = w_d[3'd4] ? m2_q[23:8] : w_m[R_AY0] ? mv_v : x_ay0;
+	wv[R_SI]  = mv_v;
+	wv[R_SE]  = w_m[R_SE]  ? sext8(mv_v) : x_se;
+	wv[R_AR]  = w_m[R_AR]  ? mv_v : x_alu;
+	wv[R_MR0] = w_m[R_MR0] ? mv_v : w_sat ? (o_mr[39] ? 16'h0000 : 16'hffff) : macr[15:0];
+	wv[R_MR1] = w_m[R_MR1] ? mv_v : w_sat ? (o_mr[39] ? 16'h8000 : 16'h7fff) : macr[31:16];
+	wv[R_MR2] = w_m[R_MR2] ? (w_mr2s ? {16{mv_v[15]}} : sext8(mv_v)) :
+	            w_sat ? {16{o_mr[39]}} : macr[47:32];
+	wv[R_SR0] = w_m[R_SR0] ? mv_v : x_sr[15:0];
+	wv[R_SR1] = w_m[R_SR1] ? mv_v : x_sr[31:16];
+	wv[R_AF]  = w_afdiv ? x_af : x_alu;
+	wv[R_MF]  = macr[31:16];
+	wv[R_SB]  = w_m[R_SB]  ? {{11{mv_v[4]}}, mv_v[4:0]} : x_sb;
+end
 
 // counter stack push (MAME cntr_stack_push), the new value goes to CNTR
 task automatic cntr_push(input [13:0] v);
@@ -816,33 +942,33 @@ task automatic ab_stop;
 	end
 endtask
 
-// group 1-3 register writes (MAME write_reg1-3)
-task automatic wr_grp(input [1:0] g, input [3:0] c, input [15:0] v);
+// register writes (MAME write_reg0-3) other than to the data registers
+// (group 0 and SB: the write back's plan does those). I and L as the plan
+// read them: mv_lm = lmask(L), mv_ir = I of the register named
+task automatic wr_ext(input [1:0] g, input [3:0] c, input [15:0] v);
 	reg [2:0] n;
 	begin
 		n = {g[1], c[1:0]};
 		case (g)
-			2'd0: wr0(c, v);
 			2'd1, 2'd2: case (c[3:2])
-				2'd0: begin ir[n] <= v[13:0]; br[n] <= v[13:0] & lmask(lr[n]); end
+				2'd0: begin ir[n] <= v[13:0]; br[n] <= v[13:0] & mv_lm; end
 				2'd1: mr[n] <= v[13:0];
-				2'd2: begin lr[n] <= v[13:0]; br[n] <= ir[n] & lmask(v[13:0]); end
+				2'd2: begin lr[n] <= v[13:0]; lm[n] <= lmask(v[13:0]); br[n] <= mv_ir & lmask(v[13:0]); end
 				default: ;
 			endcase
-			default: case (c)
+			2'd3: case (c)
 				4'h0: astat <= v[7:0];
 				4'h1: mstat <= v[6:0];
 				4'h3: imask <= v[5:0];
 				4'h4: icntl <= v[4:0];
 				4'h5: cntr_push(v[13:0]);
-				4'h6: rf[{bk, R_SB}] <= {{11{v[4]}}, v[4:0]};
 				4'h7: px <= v[7:0];
 				4'hB: begin                                      // TX1 (MAME sound_tx_callback)
 					if (creg[C_SYSCTL][11] && creg[C_S1AUTO][1]) begin
 						// I rounded down to 16 (its base follows), the half-buffer
 						// timer restarted with this instruction as its first cycle
 						ir[ab_i]  <= ir[ab_i] & 14'h3FF0;
-						br[ab_i]  <= ir[ab_i] & 14'h3FF0 & lmask(lr[ab_i]);
+						br[ab_i]  <= ir[ab_i] & 14'h3FF0 & lm[ab_i];
 						ab_ireg   <= ab_i;
 						ab_incs   <= mr[ab_m];
 						ab_size   <= lr[ab_i];
@@ -873,8 +999,9 @@ task automatic wr_grp(input [1:0] g, input [3:0] c, input [15:0] v);
 				end
 				4'hD: cntr <= v[13:0];                            // OWRCNTR
 				4'hF: pc_push(v[13:0]);                           // TOPPCSTACK
-				default: ;                                         // SSTAT, RX, TX0: nothing
+				default: ;                                         // SSTAT, SB (data register), RX, TX0: nothing
 			endcase
+			default: ;                                             // group 0: data registers
 		endcase
 	end
 endtask
@@ -960,6 +1087,7 @@ always @(posedge clk) begin
 	if (reset) begin
 		st          <= S_RESET;
 		tok         <= 13'd0;
+		tok_nz      <= 1'b0;
 		booting     <= 1'b0;
 		ab_on       <= 1'b0;
 		ab_due      <= 1'b0;
@@ -1057,12 +1185,13 @@ always @(posedge clk) begin
 		S_TOP: begin
 			if (ab_due) begin
 				// half buffer due (MAME dcs_irq): its words from I on
-				ab_due  <= 1'b0;
-				ab_blk  <= 1'b1;
-				ab_reg  <= {1'b0, ir[ab_ireg]};
-				ab_left <= ab_count;
+				ab_due     <= 1'b0;
+				ab_blk     <= 1'b1;
+				ab_reg     <= {1'b0, ir[ab_ireg]};
+				ab_left    <= ab_count;
+				ab_left_nz <= (ab_count != 14'd0);
 			end
-			else if (ab_blk && ab_left != 14'd0) begin
+			else if (ab_blk && ab_left_nz) begin
 				a_pm   <= 1'b0;
 				a_we   <= 1'b0;
 				a_addr <= ab_reg[13:0];
@@ -1074,14 +1203,14 @@ always @(posedge clk) begin
 				// transmit interrupt) at the end of the buffer
 				ab_blk  <= 1'b0;
 				o_armed <= 1'b1;
-				if (ab_reg >= {1'b0, br[ab_ireg]} + {1'b0, ab_size}) begin
+				if (ab_reg >= ab_end) begin
 					ir[ab_ireg] <= br[ab_ireg];
 					lat1        <= 1'b1;
 					s1tx_pulse  <= 1'b1;
 				end
 				else begin
 					ir[ab_ireg] <= ab_reg[13:0];
-					br[ab_ireg] <= ab_reg[13:0] & lmask(lr[ab_ireg]);
+					br[ab_ireg] <= ab_reg[13:0] & lm[ab_ireg];
 				end
 			end
 			else if (irq_any) begin
@@ -1113,7 +1242,7 @@ always @(posedge clk) begin
 			end
 			else begin
 				s1tx_pulse <= 1'b0;
-				if (tok != 13'd0 || tick) begin
+				if (tok_nz || tick) begin
 					tok_use = 1'b1;
 					ppc     <= pc;
 					f_int   <= (pc[13:10] == 4'd0);
@@ -1134,7 +1263,8 @@ always @(posedge clk) begin
 		// opcode arrives: next PC, DO-loop end (MAME, before the instruction)
 		//------------------------------------------------------------------
 		S_OPW: if (f_int || ext_ack) begin
-			op <= f_int ? pm_q : ext_rdata;
+			op  <= f_int ? pm_q : ext_rdata;
+			cls <= classes(f_int ? pm_q : ext_rdata);
 			if (!loop_on || pc != loop_end)
 				pc <= pc + 14'd1;
 			else if (loop_cond == 4'd14) begin
@@ -1183,31 +1313,51 @@ always @(posedge clk) begin
 				cok <= cond_flags(op[3:0], astat);
 
 			// operands
-			o_ax  <= rf[{bk, alu_x_slot(op[10:8])}];
-			o_ay  <= (op[12:11] == 2'd0) ? rf[{bk, R_AY0}] : (op[12:11] == 2'd1) ? rf[{bk, R_AY1}] :
-			         (op[12:11] == 2'd2) ? rf[{bk, R_AF}] : 16'h0000;
-			o_mx  <= rf[{bk, mac_x_slot(op[10:8])}];
-			o_my  <= (op[12:11] == 2'd0) ? rf[{bk, R_MY0}] : (op[12:11] == 2'd1) ? rf[{bk, R_MY1}] :
-			         (op[12:11] == 2'd2) ? rf[{bk, R_MF}] : 16'h0000;
-			o_sx  <= rf[{bk, sh_x_slot(op[10:8])}];
-			o_mr  <= {rf[{bk, R_MR2}], rf[{bk, R_MR1}], rf[{bk, R_MR0}]};
-			o_sr  <= {rf[{bk, R_SR1}], rf[{bk, R_SR0}]};
-			o_se  <= rf[{bk, R_SE}];
-			o_sb  <= rf[{bk, R_SB}];
-			o_af  <= rf[{bk, R_AF}];
-			o_ay0 <= rf[{bk, R_AY0}];
+			o_ax  <= rf[{bk_a, alu_x_slot(op[10:8])}];
+			o_ay  <= (op[12:11] == 2'd0) ? rf[{bk_a, R_AY0}] : (op[12:11] == 2'd1) ? rf[{bk_a, R_AY1}] :
+			         (op[12:11] == 2'd2) ? rf[{bk_a, R_AF}] : 16'h0000;
+			o_mx  <= rf[{bk_m, mac_x_slot(op[10:8])}];
+			o_my  <= (op[12:11] == 2'd0) ? rf[{bk_m, R_MY0}] : (op[12:11] == 2'd1) ? rf[{bk_m, R_MY1}] :
+			         (op[12:11] == 2'd2) ? rf[{bk_m, R_MF}] : 16'h0000;
+			o_sx  <= rf[{bk_s, sh_x_slot(op[10:8])}];
+			o_mr  <= {rf[{bk_m, R_MR2}], rf[{bk_m, R_MR1}], rf[{bk_m, R_MR0}]};
+			o_sr  <= {rf[{bk_s, R_SR1}], rf[{bk_s, R_SR0}]};
+			o_se  <= rf[{bk_s, R_SE}];
+			o_sb  <= rf[{bk_s, R_SB}];
+			o_af  <= rf[{bk_a, R_AF}];
+			o_ay0 <= rf[{bk_a, R_AY0}];
+			// shift code: immediate, or SE
+			o_sd  <= sh_dec(c_shimm ? op[7:0] : rf[{bk_s, R_SE}][7:0]);
 
-			// value for moves and memory writes
+			// value for moves and memory writes (shift with register move:
+			// the register op[3:0] names, as it is before the shift)
 			if (opc == 8'h0D)
 				o_mv <= rd_grp(op[9:8], op[3:0]);
 			else if (opc[7:4] == 4'h9)
 				o_mv <= rd_grp(op[19:18], op[3:0]);
 			else if (opc[7:5] == 3'b101)                            // A0-BF immediate data
 				o_mv <= op[19:4];
-			else if (c_move_am)
-				o_mv <= rf[{bk, 1'b0, op[3:0]}];
+			else if (c_move_am || opc == 8'h10)
+				o_mv <= rf[{bk_v, 1'b0, op[3:0]}];
 			else
-				o_mv <= rf[{bk, 1'b0, op[7:4]}];
+				o_mv <= rf[{bk_v, 1'b0, op[7:4]}];
+
+			// DAG post-modify operands: the memory access's DAG (I in op[3:2],
+			// M in op[1:0]; DAG2 for program memory, data memory classes 13,
+			// 7x, Bx; MODIFY: I in op[4:2]), a dual read's DAG2 (I in op[7:6],
+			// M in op[5:4]); execute works them out
+			pb = (opc == 8'h11 || opc[7:4] == 4'h5 || opc == 8'h13 || opc[7:4] == 4'h7 ||
+			      opc[7:4] == 4'hB || (opc == 8'h09 && op[4]));
+			g1_i <= ir[{pb, op[3:2]}];
+			g1_m <= mr[{pb, op[1:0]}];
+			g1_b <= br[{pb, op[3:2]}];
+			g1_l <= lr[{pb, op[3:2]}];
+			g2_i <= ir[{1'b1, op[7:6]}];
+			g2_m <= mr[{1'b1, op[5:4]}];
+			g2_b <= br[{1'b1, op[7:6]}];
+			g2_l <= lr[{1'b1, op[7:6]}];
+			d1_i <= {pb, op[3:2]};
+			d2_i <= {1'b1, op[7:6]};
 
 			// memory plan
 			m1_on <= 1'b0;
@@ -1222,24 +1372,21 @@ always @(posedge clk) begin
 				m1_pm    <= 1'b1;
 				m1_we    <= (opc == 8'h11) ? op[15] : op[19];
 				m1_addr  <= ir[{1'b1, op[3:2]}];
-				m1_wdata <= {rf[{bk, 1'b0, op[7:4]}], px};
-				cw = circ(ir[{1'b1, op[3:2]}], mr[{1'b1, op[1:0]}], br[{1'b1, op[3:2]}], lr[{1'b1, op[3:2]}]);
-				d2_on <= 1'b1; d2_i <= {1'b1, op[3:2]}; d2_v <= cw[13:0];
+				m1_wdata <= {rf[{bk_v, 1'b0, op[7:4]}], px};
+				d1_on    <= 1'b1;
 			end
 			else if (opc == 8'h12 || opc[7:4] == 4'h6 || opc[7:4] == 4'hA || c_dual) begin
 				// data memory through DAG1 (bit-reversed when MSTAT says so)
 				m1_on    <= 1'b1;
 				m1_we    <= (opc == 8'h12) ? op[15] : (opc[7:4] == 4'h6) ? op[19] : (opc[7:4] == 4'hA);
 				m1_addr  <= mstat[M_REV] ? rev14(ir[{1'b0, op[3:2]}]) : ir[{1'b0, op[3:2]}];
-				m1_wdata <= {8'h00, (opc[7:4] == 4'hA) ? op[19:4] : rf[{bk, 1'b0, op[7:4]}]};
-				cw = circ(ir[{1'b0, op[3:2]}], mr[{1'b0, op[1:0]}], br[{1'b0, op[3:2]}], lr[{1'b0, op[3:2]}]);
-				d1_on <= 1'b1; d1_i <= {1'b0, op[3:2]}; d1_v <= cw[13:0];
+				m1_wdata <= {8'h00, (opc[7:4] == 4'hA) ? op[19:4] : rf[{bk_v, 1'b0, op[7:4]}]};
+				d1_on    <= 1'b1;
 				if (c_dual) begin
-					// and program memory through DAG2 (I in op[7:6], M in op[5:4])
+					// and program memory through DAG2
 					m2_on   <= 1'b1;
 					m2_addr <= ir[{1'b1, op[7:6]}];
-					cw = circ(ir[{1'b1, op[7:6]}], mr[{1'b1, op[5:4]}], br[{1'b1, op[7:6]}], lr[{1'b1, op[7:6]}]);
-					d2_on <= 1'b1; d2_i <= {1'b1, op[7:6]}; d2_v <= cw[13:0];
+					d2_on   <= 1'b1;
 				end
 			end
 			else if (opc == 8'h13 || opc[7:4] == 4'h7 || opc[7:4] == 4'hB) begin
@@ -1247,9 +1394,8 @@ always @(posedge clk) begin
 				m1_on    <= 1'b1;
 				m1_we    <= (opc == 8'h13) ? op[15] : (opc[7:4] == 4'h7) ? op[19] : 1'b1;
 				m1_addr  <= ir[{1'b1, op[3:2]}];
-				m1_wdata <= {8'h00, (opc[7:4] == 4'hB) ? op[19:4] : rf[{bk, 1'b0, op[7:4]}]};
-				cw = circ(ir[{1'b1, op[3:2]}], mr[{1'b1, op[1:0]}], br[{1'b1, op[3:2]}], lr[{1'b1, op[3:2]}]);
-				d2_on <= 1'b1; d2_i <= {1'b1, op[3:2]}; d2_v <= cw[13:0];
+				m1_wdata <= {8'h00, (opc[7:4] == 4'hB) ? op[19:4] : rf[{bk_v, 1'b0, op[7:4]}]};
+				d1_on    <= 1'b1;
 			end
 			else if (opc[7:5] == 3'b100) begin
 				// data memory, immediate address
@@ -1258,6 +1404,8 @@ always @(posedge clk) begin
 				m1_addr  <= op[17:4];
 				m1_wdata <= {8'h00, rd_grp(op[19:18], op[3:0])};
 			end
+			else if (opc == 8'h09)
+				d1_on    <= 1'b1;                                    // MODIFY (I, M)
 			st <= S_EX1;
 		end
 
@@ -1275,8 +1423,8 @@ always @(posedge clk) begin
 			// MAC product
 			x_prod <= mac_prod(op[16:13], o_mx, o_my, mstat[M_INT]);
 
-			// shifter (immediate shift code or SE)
-			shr = shifter(op[14:11], c_shimm ? op[7:0] : o_se[7:0], o_sx, o_sr, o_se, o_sb, astat);
+			// shifter (immediate shift code or SE, taken apart at decode)
+			shr = shifter(op[14:11], o_sd, o_sx, o_sr, o_se, o_sb, astat);
 			x_sr <= shr[31:0];
 			x_sb <= shr[47:32];
 			x_se <= shr[63:48];
@@ -1300,6 +1448,137 @@ always @(posedge clk) begin
 				x_af  <= {r[14:0], o_ay0[15]};
 				x_ay0 <= {o_ay0[14:0], ~t[15]};
 			end
+
+			// DAG post-modify (MAME modify_address)
+			cw = circ(g1_i, g1_m, g1_b, g1_l);
+			d1_v <= cw[13:0];
+			cw = circ(g2_i, g2_m, g2_b, g2_l);
+			d2_v <= cw[13:0];
+
+			//--------------------------------------------------------------
+			// the write back's plan, in the order the write back had it
+			// (a later write to a register wins: a move over the ALU / MAC
+			// / shifter result, a dual read over both)
+			//--------------------------------------------------------------
+			pa     = 19'd0;
+			pm     = 19'd0;
+			pd     = 8'd0;
+			p_mvon = 1'b0;
+			p_g    = 2'd0;
+			p_c    = op[7:4];
+			p_src  = MV_O;
+			w_afdiv  <= 1'b0;
+			w_sat    <= 1'b0;
+			w_ast_x  <= 1'b0;
+			w_ast_mv <= 1'b0;
+
+			// ALU / MAC with an unconditional class, or a condition that holds
+			if (c_am && (!c_cond_am || cok)) begin
+				if (am_alu) begin
+					if (am_f) pa[R_AF] = 1'b1;
+					else      pa[R_AR] = 1'b1;
+					w_ast_x <= 1'b1;
+				end
+				else if (op[16:13] != 4'd0) begin
+					if (am_f) pa[R_MF] = 1'b1;
+					else begin
+						pa[R_MR0] = 1'b1; pa[R_MR1] = 1'b1; pa[R_MR2] = 1'b1;
+						w_ast_mv <= 1'b1;
+					end
+				end
+			end
+			// MAC accumulate: subtract, round, from zero
+			w_msub <= (op[16:13] == 4'h3 || op[16:15] == 2'b11);
+			w_mrnd <= (op[16:15] == 2'b00);
+			w_mzb  <= (op[16:13] == 4'h1 || op[16:13] == 4'h4 || op[16:13] == 4'h5 ||
+			           op[16:13] == 4'h6 || op[16:13] == 4'h7);
+
+			// shifter
+			if (c_shift && (opc != 8'h0E || cok)) begin
+				if (op[14:11] < 4'hC) begin
+					pa[R_SR0] = 1'b1; pa[R_SR1] = 1'b1;           // LSHIFT / ASHIFT / NORM
+				end
+				else if (opc != 8'h0F) begin
+					pa[R_SE] = 1'b1; pa[R_SB] = 1'b1;             // EXP, EXP HIX, EXP LO, EXPADJ
+					w_ast_x <= 1'b1;
+				end
+			end
+
+			case (opc)
+				8'h05: if (astat[MV]) begin                    // SAT MR
+					pa[R_MR0] = 1'b1; pa[R_MR1] = 1'b1; pa[R_MR2] = 1'b1;
+					w_sat <= 1'b1;
+				end
+				8'h06, 8'h07: begin                            // DIVS, DIVQ
+					pa[R_AF] = 1'b1; pa[R_AY0] = 1'b1;
+					w_afdiv <= 1'b1;
+					w_ast_x <= 1'b1;
+				end
+				8'h0D: begin                                   // register move
+					p_mvon = 1'b1; p_g = op[11:10];
+				end
+				8'h10: begin                                   // shift with register move (after the shift)
+					p_mvon = 1'b1;
+					p_src  = (op[3:0] == 4'hE) ? MV_SRL : (op[3:0] == 4'hF) ? MV_SRH :
+					         (op[3:0] == 4'h9 && op[14:11] >= 4'hC) ? MV_XSE : MV_O;
+				end
+				8'h11: if (!op[15]) begin                      // shift with program memory read
+					p_mvon = 1'b1; p_src = MV_M1H;
+				end
+				8'h12, 8'h13: if (!op[15]) begin               // shift with data memory read
+					p_mvon = 1'b1; p_src = MV_M1L;
+				end
+				default: ;
+			endcase
+			// ALU/MAC with register move (after the op, value from before)
+			if (c_move_am)
+				p_mvon = 1'b1;
+			// immediate loads
+			if (opc[7:4] == 4'h3) begin
+				p_mvon = 1'b1; p_g = opc[3:2]; p_c = op[3:0]; p_src = MV_IMM;
+			end
+			if (opc[7:4] == 4'h4) begin
+				p_mvon = 1'b1; p_c = op[3:0]; p_src = MV_IMM;
+			end
+			// memory reads into registers (after the op)
+			if (opc[7:4] == 4'h5 && !op[19]) begin
+				p_mvon = 1'b1; p_src = MV_M1H;
+			end
+			if ((opc[7:4] == 4'h6 || opc[7:4] == 4'h7) && !op[19]) begin
+				p_mvon = 1'b1; p_src = MV_M1L;
+			end
+			if (opc[7:4] == 4'h8) begin
+				p_mvon = 1'b1; p_g = op[19:18]; p_c = op[3:0]; p_src = MV_M1L;
+			end
+			// dual read: AX0 / AX1 / MX0 / MX1 from data memory, AY0 / AY1 /
+			// MY0 / MY1 from program memory
+			if (c_dual) begin
+				pd[{1'b0, op[19:18]}] = 1'b1;
+				pd[{1'b1, op[21:20]}] = 1'b1;
+			end
+
+			// the move's data register (group 0; SB in group 3)
+			if (p_mvon && p_g == 2'd0) begin
+				case (p_c)
+					4'hC:    begin pm[R_MR1] = 1'b1; pm[R_MR2] = 1'b1; end
+					default: pm[{1'b0, p_c}] = 1'b1;
+				endcase
+			end
+			if (p_mvon && p_g == 2'd3 && p_c == 4'h6)
+				pm[R_SB] = 1'b1;
+
+			w_a     <= pa;
+			w_m     <= pm;
+			w_d     <= pd;
+			w_mr2s  <= (p_c == 4'hC);
+			wbk     <= mstat[M_BANK];
+			mv_on   <= p_mvon;
+			mv_g    <= p_g;
+			mv_c    <= p_c;
+			mv_src  <= p_src;
+			mv_imm  <= (opc[7:4] == 4'h3) ? sext14({2'b00, op[17:4]}) : op[19:4];
+			mv_lm   <= lm[{p_g[1], p_c[1:0]}];
+			mv_ir   <= ir[{p_g[1], p_c[1:0]}];
 
 			if (m1_on) begin
 				a_pm    <= m1_pm;
@@ -1367,9 +1646,10 @@ always @(posedge clk) begin
 					fw_addr <= ab_wr;
 					fw_data <= q[15:0];
 					ab_wr   <= ab_wr + 9'd1;
-					ab_reg  <= ab_reg + {ab_incs[13], ab_incs};
-					ab_left <= ab_left - 14'd1;
-					st      <= S_TOP;
+					ab_reg     <= ab_reg + {ab_incs[13], ab_incs};
+					ab_left    <= ab_left - 14'd1;
+					ab_left_nz <= (ab_left != 14'd1);
+					st         <= S_TOP;
 				end
 			endcase
 		end
@@ -1378,53 +1658,17 @@ always @(posedge clk) begin
 		// write back
 		//------------------------------------------------------------------
 		S_EX2: begin
-			// DAG post-modify
+			// DAG post-modify (MODIFY too)
 			if (d1_on) ir[d1_i] <= d1_v;
 			if (d2_on) ir[d2_i] <= d2_v;
 
-			// ALU / MAC with an unconditional class, or a condition that holds
-			if (c_am && (!c_cond_am || cok)) begin
-				if (am_alu) begin
-					if (am_f) rf[{bk, R_AF}] <= x_alu;
-					else      rf[{bk, R_AR}] <= x_alu;
-					astat <= x_ast;
-				end
-				else if (op[16:13] != 4'd0) begin
-					// MAC accumulate (MAME: rounding looks at the product). One
-					// add of three: base, the product or its complement, and
-					// the rounding constant with the subtraction's carry in
-					mac_sub = (op[16:13] == 4'h3 || op[16:15] == 2'b11);
-					mac_rnd = (op[16:15] == 2'b00);
-					macr = ((op[16:13] == 4'h1 || op[16:13] == 4'h4 || op[16:13] == 4'h5 ||
-					         op[16:13] == 4'h6 || op[16:13] == 4'h7) ? 48'd0 : o_mr) +
-					       ({{16{x_prod[31]}}, x_prod} ^ {48{mac_sub}}) +
-					       {32'd0, mac_rnd, 14'd0, mac_sub};
-					if (mac_rnd && x_prod[15:0] == 16'h8000) macr[16] = 1'b0;
-					if (am_f)
-						rf[{bk, R_MF}] <= macr[31:16];
-					else begin
-						rf[{bk, R_MR0}] <= macr[15:0];
-						rf[{bk, R_MR1}] <= macr[31:16];
-						rf[{bk, R_MR2}] <= macr[47:32];
-						astat[MV] <= !((macr[39:31] == 9'h000) || (macr[39:31] == 9'h1ff));
-					end
-				end
-			end
+			// data registers, as the plan has them (bank of the instruction)
+			for (k = 0; k < 19; k = k + 1)
+				if (w_en[k]) rf[(wbk ? 32 : 0) + k] <= wv[k];
 
-			// shifter
-			if (c_shift && (opc != 8'h0E || cok)) begin
-				if (op[14:11] < 4'hC) begin
-					// LSHIFT / ASHIFT / NORM
-					rf[{bk, R_SR0}] <= x_sr[15:0];
-					rf[{bk, R_SR1}] <= x_sr[31:16];
-				end
-				else if (opc != 8'h0F) begin
-					// EXP, EXP HIX, EXP LO, EXPADJ
-					rf[{bk, R_SE}] <= x_se;
-					rf[{bk, R_SB}] <= x_sb;
-					astat <= x_ast;
-				end
-			end
+			// ASTAT from the ALU / shifter / divide, MV from the accumulate
+			if (w_ast_x)  astat     <= x_ast;
+			if (w_ast_mv) astat[MV] <= mac_mv;
 
 			// per instruction
 			case (opc)
@@ -1451,24 +1695,6 @@ always @(posedge clk) begin
 						else       stat_push();
 					end
 				end
-				8'h05: if (astat[MV]) begin                    // SAT MR
-					if (o_mr[39]) begin
-						rf[{bk, R_MR2}] <= 16'hffff; rf[{bk, R_MR1}] <= 16'h8000; rf[{bk, R_MR0}] <= 16'h0000;
-					end
-					else begin
-						rf[{bk, R_MR2}] <= 16'h0000; rf[{bk, R_MR1}] <= 16'h7fff; rf[{bk, R_MR0}] <= 16'hffff;
-					end
-				end
-				8'h06, 8'h07: begin                            // DIVS, DIVQ
-					astat <= x_ast;
-					rf[{bk, R_AF}]  <= x_af;
-					rf[{bk, R_AY0}] <= x_ay0;
-				end
-				8'h09: begin                                   // MODIFY (I, M)
-					di = op[4:2];
-					cw = circ(ir[di], mr[{di[2], op[1:0]}], br[di], lr[di]);
-					ir[di] <= cw[13:0];
-				end
 				8'h0A: if (cok) begin                          // RTS / RTI
 					pc <= pc_top;
 					pc_pop();
@@ -1488,25 +1714,10 @@ always @(posedge clk) begin
 					          op[5]  ? op[4]  : mstat[M_BANK]};
 					if (op[15] && op[14] && !mstat[M_TIMER]) tscale_cnt <= 8'd0;
 				end
-				8'h0D: begin                                   // register move
-					if (op[9:8] == 2'd3 && op[3:0] == 4'hF) pc_pop();   // reading TOPPCSTACK pops
-					wr_grp(op[11:10], op[7:4], o_mv);
-				end
-				8'h10: begin                                   // shift with register move (after the shift)
-					case (op[3:0])
-						4'hE:    mvv = x_sr[15:0];
-						4'hF:    mvv = x_sr[31:16];
-						4'h9:    mvv = (op[14:11] >= 4'hC) ? x_se : rf[{bk, R_SE}];
-						default: mvv = rf[{bk, 1'b0, op[3:0]}];
-					endcase
-					wr0(op[7:4], mvv);
-				end
-				8'h11: if (!op[15]) begin                      // shift with program memory read
-					wr0(op[7:4], m1_q[23:8]);
+				8'h0D:                                         // register move: reading TOPPCSTACK pops
+					if (op[9:8] == 2'd3 && op[3:0] == 4'hF) pc_pop();
+				8'h11: if (!op[15])                            // shift with program memory read
 					px <= m1_q[7:0];
-				end
-				8'h12, 8'h13: if (!op[15])
-					wr0(op[7:4], m1_q[15:0]);
 				8'h14, 8'h15, 8'h16, 8'h17: begin              // DO ... UNTIL
 					if (loop_sp != 3'd4) begin
 						loops[loop_sp[1:0]] <= op[17:0];
@@ -1529,42 +1740,18 @@ always @(posedge clk) begin
 				default: ;
 			endcase
 
-			// ALU/MAC with register move (after the op, value from before)
-			if (c_move_am)
-				wr0(op[7:4], o_mv);
+			// register moves into the other registers (DAG, status, stacks,
+			// SPORT1, interrupts), after the op as the data registers
+			if (mv_on)
+				wr_ext(mv_g, mv_c, mv_v);
 
-			// immediate loads
-			if (opc[7:4] == 4'h3)
-				wr_grp(opc[3:2], op[3:0], sext14({2'b00, op[17:4]}));
-			if (opc[7:4] == 4'h4)
-				wr0(op[3:0], op[19:4]);
-
-			// memory reads into registers (after the op)
-			if (opc[7:4] == 4'h5 && !op[19]) begin
-				wr0(op[7:4], m1_q[23:8]);
+			// PX from memory reads
+			if (opc[7:4] == 4'h5 && !op[19])
 				px <= m1_q[7:0];
-			end
-			if ((opc[7:4] == 4'h6 || opc[7:4] == 4'h7) && !op[19])
-				wr0(op[7:4], m1_q[15:0]);
-			if (opc[7:4] == 4'h8)
-				wr_grp(op[19:18], op[3:0], m1_q[15:0]);
 			if (opc[7:4] == 4'h9 && op[19:18] == 2'd3 && op[3:0] == 4'hF)
 				pc_pop();                                      // DM(addr) = TOPPCSTACK pops
-			if (c_dual) begin
-				case (op[19:18])
-					2'd0: rf[{bk, R_AX0}] <= m1_q[15:0];
-					2'd1: rf[{bk, R_AX1}] <= m1_q[15:0];
-					2'd2: rf[{bk, R_MX0}] <= m1_q[15:0];
-					2'd3: rf[{bk, R_MX1}] <= m1_q[15:0];
-				endcase
-				case (op[21:20])
-					2'd0: rf[{bk, R_AY0}] <= m2_q[23:8];
-					2'd1: rf[{bk, R_AY1}] <= m2_q[23:8];
-					2'd2: rf[{bk, R_MY0}] <= m2_q[23:8];
-					2'd3: rf[{bk, R_MY1}] <= m2_q[23:8];
-				endcase
+			if (c_dual)
 				px <= m2_q[7:0];
-			end
 
 			// the next fetch, or a reboot
 			if (reboot)
@@ -1609,8 +1796,14 @@ always @(posedge clk) begin
 
 		// tokens: one per tick, one per instruction started
 		case ({tick, tok_use})
-			2'b10: if (tok != 13'h1FFF) tok <= tok + 13'd1;
-			2'b01: tok <= tok - 13'd1;
+			2'b10: begin
+				if (tok != 13'h1FFF) tok <= tok + 13'd1;
+				tok_nz <= 1'b1;
+			end
+			2'b01: begin
+				tok    <= tok - 13'd1;
+				tok_nz <= (tok != 13'd1);
+			end
 			default: ;
 		endcase
 	end
