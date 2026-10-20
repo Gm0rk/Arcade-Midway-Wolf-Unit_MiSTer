@@ -37,15 +37,15 @@ WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 
 ## Games
 
-| Game | MRA set | Status |
-|---|---|---|
-| [Mortal Kombat 3](docs/Mortal-Kombat-3.md) | mk3 (rev 2.1) + rev 2.0, 1.0, p4.0 | Awaiting hardware test |
-| [Ultimate Mortal Kombat 3](docs/Ultimate-Mortal-Kombat-3.md) | umk3 (rev 1.2) + rev 1.1, 1.0 | Awaiting hardware test |
-| [WWF WrestleMania](docs/WWF-WrestleMania.md) | wwfmania (rev 1.30) + rev 1.20, 1.1, proto 2.01 | Awaiting hardware test |
-| [2 On 2 Open Ice Challenge](docs/2-On-2-Open-Ice-Challenge.md) | openice (rev 1.21) + rev 1.2A | Awaiting hardware test |
-| [NBA Hangtime](docs/NBA-Hangtime.md) | nbahangt (L1.3) + M1.3, L1.2, M1.2, L1.1, M1.1 | Awaiting hardware test |
-| [NBA Maximum Hangtime](docs/NBA-Hangtime.md) | nbamht (L1.03) + L1.0, M1.0, L0.9 | Awaiting hardware test |
-| [Rampage World Tour](docs/Rampage-World-Tour.md) | rmpgwt (rev 1.3) + rev 1.1 | Awaiting hardware test |
+| Game | MRA set | Status | Title Screen | Gameplay |
+|---|---|---|---|---|
+| [2 On 2 Open Ice Challenge](docs/2-On-2-Open-Ice-Challenge.md) | openice (rev 1.21) + rev 1.2A | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NHL_Open_Ice.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NHL_Open_Ice_2.png" width="300">
+| [Mortal Kombat 3](docs/Mortal-Kombat-3.md) | mk3 (rev 2.1) + rev 2.0, 1.0, p4.0 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Mortal_Kombat_3.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Mortal_Kombat_3_2.png" width="300">
+| [NBA Hangtime](docs/NBA-Hangtime.md) | nbahangt (L1.3) + M1.3, L1.2, M1.2, L1.1, M1.1 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NBA_Hangtime.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NBA_Hangtime_2.png" width="300">
+| [NBA Maximum Hangtime](docs/NBA-Hangtime.md) | nbamht (L1.03) + L1.0, M1.0, L0.9 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NBA_Maximum_Hangtime.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NBA_Maximum_Hangtime_2.png" width="300">
+| [Rampage World Tour](docs/Rampage-World-Tour.md) | rmpgwt (rev 1.3) + rev 1.1 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Rampage_World_Tour.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Rampage_World_Tour_2.png" width="300">
+| [Ultimate Mortal Kombat 3](docs/Ultimate-Mortal-Kombat-3.md) | umk3 (rev 1.2) + rev 1.1, 1.0 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Ultimate_Mortal_Kombat_3.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Ultimate_Mortal_Kombat_3_2.png" width="300">
+| [WWF WrestleMania](docs/WWF-WrestleMania.md) | wwfmania (rev 1.30) + rev 1.20, 1.1, proto 2.01 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/WWF_Wrestlemania.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/WWF_Wrestlemania_2.png" width="300">
 
 Each game's page in `docs/` has its controls and the features that only it
 has (hidden menus, Kombat Kodes, finishing moves).
