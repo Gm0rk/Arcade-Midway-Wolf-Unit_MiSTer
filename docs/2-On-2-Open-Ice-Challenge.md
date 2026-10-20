@@ -1,5 +1,7 @@
 # 2 On 2 Open Ice Challenge
 
+<img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NHL_Open_Ice.png" width="400"> <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/NHL_Open_Ice_2.png" width="400">
+
 MRA sets: openice (rev 1.21), with rev 1.2A in `_alternatives`.
 
 ## Contents
