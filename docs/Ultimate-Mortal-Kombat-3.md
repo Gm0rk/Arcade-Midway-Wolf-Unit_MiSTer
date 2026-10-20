@@ -1,5 +1,9 @@
 # Ultimate Mortal Kombat 3
 
+[Back to the main README](../README.md)
+
+<img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Ultimate_Mortal_Kombat_3.png" width="400"> <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Ultimate_Mortal_Kombat_3_2.png" width="400">
+
 MRA sets: umk3 (rev 1.2), with rev 1.1 and rev 1.0 in `_alternatives`.
 Use the MRAs of the same release as the core: they tell it where the game
 keeps its state and carry the patched program copy for the Scorpion - Smoke
