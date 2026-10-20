@@ -1,5 +1,9 @@
 # WWF WrestleMania
 
+[Back to the main README](../README.md)
+
+<img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/WWF_Wrestlemania.png" width="400"> <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/WWF_Wrestlemania_2.png" width="400">
+
 MRA sets: wwfmania (rev 1.30), with rev 1.20, rev 1.1 and proto 2.01 in
 `_alternatives`.
 
