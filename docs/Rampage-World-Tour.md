@@ -1,5 +1,9 @@
 # Rampage World Tour
 
+[Back to the main README](../README.md)
+
+<img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Rampage_World_Tour.png" width="400"> <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Rampage_World_Tour_2.png" width="400">
+
 MRA sets: rmpgwt (rev 1.3), with rev 1.1 in `_alternatives`.
 
 <!-- extra-content: this section is copied from Extra-Content.md by tools/extra_content.py -->
