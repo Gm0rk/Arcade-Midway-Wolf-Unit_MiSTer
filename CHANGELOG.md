@@ -4,6 +4,12 @@ What changed in the Arcade-Midway-Wolf-Unit core, newest build first. Each build
 
 Build numbers count the core's development builds in order. Released RBF files are named by date.
 
+## Build 33 (2026-10-19)
+
+**Docs & tools**
+- README: the Games table is in alphabetical order with a title screen and a gameplay picture for each game; the status note adds that there are no releases until testing is complete; the link to the extra content document stays after the table.
+- Every game's page starts with a link back to the README and the game's two pictures.
+
 ## Build 32 (2026-10-18)
 
 **Added**
