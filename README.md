@@ -48,7 +48,9 @@ WrestleMania, 2 On 2 Open Ice Challenge, NBA Hangtime and Rampage World Tour.
 | [WWF WrestleMania](docs/WWF-WrestleMania.md) | wwfmania (rev 1.30) + rev 1.20, 1.1, proto 2.01 | Awaiting hardware test | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/WWF_Wrestlemania.png" width="300"> | <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/WWF_Wrestlemania_2.png" width="300">
 
 Each game's page in `docs/` has its controls and the features that only it
-has (hidden menus, Kombat Kodes, finishing moves).
+has (hidden menus, Kombat Kodes, finishing moves). [Extra
+content](docs/Extra-Content.md) lists everything the core adds, core-wide
+and game by game.
 
 Verified on hardware: `[░░░░░░░░░░░░░░░░░░░░]` 0 / 7
 
