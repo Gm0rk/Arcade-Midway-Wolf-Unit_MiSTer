@@ -1,5 +1,9 @@
 # Mortal Kombat 3
 
+[Back to the main README](../README.md)
+
+<img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Mortal_Kombat_3.png" width="400"> <img src="https://github.com/Gm0rk/Arcade-Midway-Wolf-Unit_MiSTer/blob/main/media/Mortal_Kombat_3_2.png" width="400">
+
 MRA sets: mk3 (rev 2.1), with rev 2.0, rev 1.0 and rev 1 chip label p4.0
 in `_alternatives`. Use the MRAs of the same release as the core: they tell
 it where the game keeps its state and which finishing moves the set has.
